@@ -1,0 +1,26 @@
+# Local dependencies and generated Next.js output
+node_modules/
+.next/
+.next-*/
+out/
+build/
+
+# Local tooling and agent metadata
+.tools/
+.agents/
+.vercel/
+
+# Tests and local reports are not required by the production runtime
+coverage/
+playwright-report/
+test-results/
+tests/
+
+# Local-only configuration and caches
+.env*
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store

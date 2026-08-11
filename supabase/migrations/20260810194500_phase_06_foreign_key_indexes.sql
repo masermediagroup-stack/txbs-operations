@@ -1,0 +1,15 @@
+create index activity_events_actor_user_idx on public.activity_events (actor_user_id) where actor_user_id is not null;
+create index audit_records_actor_user_idx on public.audit_records (actor_user_id) where actor_user_id is not null;
+create index issue_comments_actor_user_idx on public.issue_comments (actor_user_id) where actor_user_id is not null;
+create index issue_transitions_actor_user_idx on public.issue_transitions (actor_user_id) where actor_user_id is not null;
+create index issues_actor_user_idx on public.issues (actor_user_id) where actor_user_id is not null;
+create index issues_assignee_user_idx on public.issues (assignee_user_id) where assignee_user_id is not null;
+create index material_movements_actor_user_idx on public.material_movements (actor_user_id) where actor_user_id is not null;
+create index movement_lines_source_location_idx on public.movement_lines (source_location_id) where source_location_id is not null;
+create index movement_lines_destination_location_idx on public.movement_lines (destination_location_id) where destination_location_id is not null;
+create index outbound_batches_actor_user_idx on public.outbound_batches (actor_user_id) where actor_user_id is not null;
+create index outbound_lines_source_location_idx on public.outbound_lines (source_location_id) where source_location_id is not null;
+create index photos_actor_user_idx on public.photos (actor_user_id) where actor_user_id is not null;
+create index receipts_actor_user_idx on public.receipts (actor_user_id) where actor_user_id is not null;
+create index receipts_staging_location_idx on public.receipts (staging_location_id) where staging_location_id is not null;
+create index verification_records_actor_user_idx on public.verification_records (actor_user_id) where actor_user_id is not null;

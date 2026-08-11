@@ -1,0 +1,173 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-foreground: var(--brand-orange-foreground);
+  --color-brand-graphite: var(--brand-graphite);
+  --color-status-ordered: var(--status-ordered);
+  --color-status-ordered-soft: var(--status-ordered-soft);
+  --color-status-shipped: var(--status-shipped);
+  --color-status-shipped-soft: var(--status-shipped-soft);
+  --color-status-received: var(--status-received);
+  --color-status-received-soft: var(--status-received-soft);
+  --color-status-stored: var(--status-stored);
+  --color-status-stored-soft: var(--status-stored-soft);
+  --color-status-ready: var(--status-ready);
+  --color-status-ready-soft: var(--status-ready-soft);
+  --color-status-delivered: var(--status-delivered);
+  --color-status-delivered-soft: var(--status-delivered-soft);
+  --color-status-installed: var(--status-installed);
+  --color-status-installed-soft: var(--status-installed-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: light;
+  /* Three shared surface roles: canvas, raised content, and interactive tint. */
+  --surface-canvas: #f5f5f5;
+  --surface-raised: #ffffff;
+  --surface-subtle: #f1f1f1;
+  --surface-interactive: #eaf2f5;
+  --brand-blue: #014f6e;
+  --brand-orange: #f36c21;
+  --brand-orange-foreground: #a63f08;
+  --brand-graphite: #54585a;
+  --background: var(--surface-canvas);
+  --foreground: #172126;
+  --card: var(--surface-raised);
+  --card-foreground: #172126;
+  --popover: var(--surface-raised);
+  --popover-foreground: #172126;
+  --primary: #014f6e;
+  --primary-foreground: var(--surface-raised);
+  --secondary: var(--surface-subtle);
+  --secondary-foreground: #26363d;
+  --muted: var(--surface-subtle);
+  --muted-foreground: #5f6b70;
+  --accent: var(--surface-interactive);
+  --accent-foreground: #014f6e;
+  --destructive: #b42318;
+  --border: #dedede;
+  --input: #d4d4d4;
+  --ring: #014f6e;
+  --status-ordered: #52616b;
+  --status-ordered-soft: #f1f4f6;
+  --status-shipped: #245ec7;
+  --status-shipped-soft: #eef4ff;
+  --status-received: #06657d;
+  --status-received-soft: #e9f8fb;
+  --status-stored: #087c72;
+  --status-stored-soft: #eaf9f6;
+  --status-ready: #b94b12;
+  --status-ready-soft: #fff3e9;
+  --status-delivered: #6d48b8;
+  --status-delivered-soft: #f4f0ff;
+  --status-installed: #25734d;
+  --status-installed-soft: #edf8f1;
+  --radius: 0.625rem;
+  --sidebar: var(--surface-raised);
+  --sidebar-foreground: #29383e;
+  --sidebar-primary: #014f6e;
+  --sidebar-primary-foreground: var(--surface-raised);
+  --sidebar-accent: var(--surface-interactive);
+  --sidebar-accent-foreground: #014f6e;
+  --sidebar-border: var(--border);
+  --sidebar-ring: #014f6e;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    background: var(--background);
+  }
+
+  body {
+    @apply min-h-svh bg-background text-foreground antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--brand-blue) 22%, white);
+    color: var(--foreground);
+  }
+
+  a,
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  [data-slot="native-select"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  [data-slot="native-select"]::-ms-expand {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .skip-link {
+    @apply fixed top-3 left-3 z-100 -translate-y-20 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg transition-transform focus:translate-y-0;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
