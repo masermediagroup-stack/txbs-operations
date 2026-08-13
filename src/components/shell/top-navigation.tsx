@@ -26,6 +26,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { GlobalInventorySearch } from "@/features/inventory/components/global-inventory-search";
 import { logoutAction } from "@/features/auth/server/actions";
 import type { CurrentOperator } from "@/features/auth/server/session";
+import { SyncStatusControl } from "@/features/mobile/components/sync-status-control";
 
 function initials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
@@ -77,6 +78,7 @@ export function TopNavigation({ operator }: { operator: CurrentOperator | null }
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <GlobalInventorySearch />
+        <SyncStatusControl />
 
         <DropdownMenu>
           <DropdownMenuTrigger

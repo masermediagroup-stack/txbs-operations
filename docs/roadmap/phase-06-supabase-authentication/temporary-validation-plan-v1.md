@@ -74,7 +74,7 @@ These are setup gates, not coding questions:
 | Stable URL | Approve a stable `vercel.app` alias or TBS staging subdomain | TBS/Vercel owner |
 | Entra tenant | Deferred: required before production readiness, not before temporary testing | Microsoft 365 administrator |
 | Entra application | Deferred: create the single-tenant web registration after temporary shared-workflow validation | Microsoft 365 administrator |
-| Test identities | Provide at least one Operator, Manager, Administrator, and an authenticated user with no membership | TBS operations/admin |
+| Test identities | Provide one Operator account. Reuse the existing bootstrap Administrator only for setup; defer Manager, additional Administrator, and no-membership human test accounts | TBS operations/admin |
 | Site membership | Confirm which users receive Lavon access; do not grant the planned warehouse until its site is intentionally created | TBS operations/admin |
 | Test data | Approve synthetic fixtures for normal testing and separately approve any real backup used for parity rehearsal | TBS data owner |
 | Source control | Restore or initialize a TBS-owned Git repository suitable for Vercel integration | Repository owner |
@@ -222,7 +222,7 @@ Temporary testing may use Supabase email/password authentication with these rest
 2. Create a small fixed set of test users through the Supabase Auth dashboard or a one-time server-only administrative setup script. If a script is used, its secret key remains local/CI-only and is removed immediately after provisioning.
 3. Mark the controlled test users' emails as confirmed during administrative creation so temporary testing does not depend on SMTP or magic-link delivery.
 4. Store passwords only in the approved password manager or test runner secret store. Never commit them or place them in Vercel browser/runtime variables.
-5. Create separate Operator, Manager, Administrator, and authenticated-with-no-membership identities. Do not share one login across roles.
+5. Create one Operator identity for normal desktop and mobile demo use. Reuse the existing bootstrap Administrator only for activation and maintenance. Do not create Manager, additional Administrator, or authenticated-with-no-membership human identities until the company authentication phase.
 6. Keep the normal `@supabase/ssr` cookie, `auth.getClaims()`, Profile, Site Membership, Route Handler, RLS, and private Storage architecture. Only the identity provider is temporary.
 7. Label these accounts and their records as temporary. They are deleted/revoked during teardown and are not migrated into the future production project.
 
@@ -280,7 +280,7 @@ Use synthetic data for ordinary testing. A real TBS backup may enter the tempora
 
 - Approve/rename the clean Supabase candidate and select the TBS-owned Vercel target.
 - Restore Git/source-control ownership and create the stable deployment URL.
-- Provision the controlled temporary password accounts with public signup disabled; record Entra as a deferred production gate.
+- Provision the single controlled Operator password account with public signup disabled; retain the existing bootstrap Administrator for setup and record Entra as a deferred production gate.
 - Record test identities, site memberships, data classification, retention, and cleanup owner.
 
 Exit: no unresolved infrastructure owner, OAuth owner, or data-owner question.
@@ -306,7 +306,7 @@ Exit: direct publishable-key tests prove deny-by-default access and atomic comma
 - Implement SSR clients, `proxy.ts`, temporary password login/error/sign-out states, Profile, memberships, role-aware navigation, and site selection.
 - Replace placeholder identity and derive actor information server-side.
 
-Exit: controlled test users can authenticate; no-membership/disabled users receive no operational access; sessions refresh correctly on desktop and mobile. Entra remains explicitly unverified.
+Exit: the Operator can authenticate on desktop and mobile; automated policy tests prove no-membership/disabled denial; sessions refresh correctly. Entra remains explicitly unverified.
 
 ### Stage 4 — Operational vertical slices
 
@@ -398,7 +398,7 @@ Preserve UTC timestamps, unknown-versus-zero quantities, receipt dates, verifica
 
 - The stable temporary Vercel URL supports controlled desktop and mobile Supabase password sign-in over HTTPS.
 - Public signup is disabled, and no anonymous, no-membership, inactive, or unassigned-site user can read operational rows or media.
-- Operator, Manager, and Administrator permissions match Phase 6 v1 at both application and RLS levels.
+- Operator permissions work end to end. Manager and Administrator policy behavior remains implemented and automated-testable, but separate human accounts are intentionally deferred.
 - Receiving and Damaged Issue evidence rules are enforced server-side and by the database command, while other actions do not require photos.
 - Every successful command is idempotent, version-aware, site-aware, attributable to an authenticated Profile, and represented in Activity and Audit history.
 - Shared operations performed on one device are visible on another without IndexedDB being authoritative.
@@ -445,6 +445,7 @@ Use the [shared final report](../README.md#shared-final-report) and add:
 - v1 clarification: The user approved the existing empty Supabase project, the `TBS` organization display name, and `tbs-operations-temp` as the descriptive project name.
 - v1 clarification: The user approved `masermediagroup` for the dedicated temporary Vercel project.
 - v1 clarification: Microsoft Entra is deferred for temporary testing. Controlled administratively created password accounts with public signup disabled are authorized only for the disposable environment; Entra remains mandatory before production readiness.
+- v1 clarification: Temporary human testing uses one Operator account. The existing bootstrap Administrator is retained only for setup and maintenance; Manager, additional Administrator, and no-membership accounts are deferred until the company authentication phase.
 - v1: Preserve UI-facing use cases, but do not implement Supabase as a whole-snapshot persistence adapter.
 - v1: Use authenticated, versioned, idempotent server commands and database transactions as the Phase 7-ready seam.
 - v1: Derive actor identity from the authenticated Profile while preserving imported historical operator names.

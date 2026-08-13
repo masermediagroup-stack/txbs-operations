@@ -19,6 +19,7 @@ import { useInventory } from "@/features/inventory/components/inventory-provider
 import { RecordIssueSheet } from "@/features/inventory/components/issue-actions"
 import type { InventorySnapshot, MaterialLot, OutboundBatch } from "@/features/inventory/domain/inventory"
 import { describePosition, lotVerificationState, projectLots, projectReadiness, reservedOutboundQuantity } from "@/features/inventory/domain/selectors"
+import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
 
 const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" })
 
@@ -157,6 +158,7 @@ function LotSelection({ lot, snapshot, surface, checked, selectedQuantity, onTog
 }
 
 export function OutboundWorkspace() {
+  const { isOnline } = useMobileSync()
   const searchParams = useSearchParams()
   const { snapshot, createOutboundBatch } = useInventory()
   const initialProjectId = searchParams.get("project") ?? ""
@@ -197,7 +199,7 @@ export function OutboundWorkspace() {
         lines: selectedLots.map((lot) => ({ lotId: lot.id, quantity: lot.quantity === null ? null : Number(selected[lot.id]), expectedVersion: lot.version })),
       })
       setSelected({})
-      setMessage(`${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} reserved in a planned outbound batch.`)
+      setMessage(isOnline ? `${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} reserved in a planned outbound batch.` : `${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} saved in a local outbound batch and queued for shared sync.`)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The outbound batch could not be planned.")
     } finally {
@@ -229,7 +231,7 @@ export function OutboundWorkspace() {
             {!lots.length ? <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No present material lots are available for this project.</p> : null}
           </> : <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Select a project to review material available for outbound.</p>}
           {handlingRequirements.length ? <Alert><AlertTriangle aria-hidden="true" /><AlertTitle>Handling requirements</AlertTitle><AlertDescription>{handlingRequirements.join(" · ")}</AlertDescription></Alert> : null}
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"><Field><FieldLabel htmlFor="outbound-operator">Operator name</FieldLabel><Input id="outbound-operator" value={operatorName} onChange={(event) => setOperatorName(event.target.value)} required autoComplete="name" /><FieldDescription>Required to reserve material before authentication launches.</FieldDescription></Field><div className="sticky bottom-2 rounded-xl bg-card pt-1"><Button type="submit" size="lg" className="h-11 w-full sm:w-auto" disabled={saving || !projectId || !selectedLots.length}><PackageCheck aria-hidden="true" data-icon="inline-start" />{saving ? "Planning…" : `Plan ${selectedLots.length || "selected"} lot${selectedLots.length === 1 ? "" : "s"}`}</Button></div></div>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"><Field><FieldLabel htmlFor="outbound-operator">Operator name</FieldLabel><Input id="outbound-operator" value={operatorName} onChange={(event) => setOperatorName(event.target.value)} required autoComplete="name" /><FieldDescription>Preserved as outbound evidence alongside the authenticated account.</FieldDescription></Field><div className="sticky bottom-2 rounded-xl bg-card pt-1"><Button type="submit" size="lg" className="h-11 w-full sm:w-auto" disabled={saving || !projectId || !selectedLots.length}><PackageCheck aria-hidden="true" data-icon="inline-start" />{saving ? "Planning…" : `Plan ${selectedLots.length || "selected"} lot${selectedLots.length === 1 ? "" : "s"}`}</Button></div></div>
           {error ? <FieldError>{error}</FieldError> : null}
           {message ? <Alert><CheckCircle2 aria-hidden="true" /><AlertTitle>Outbound batch planned</AlertTitle><AlertDescription>{message}</AlertDescription></Alert> : null}
         </CardContent>

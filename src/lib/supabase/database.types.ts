@@ -1145,6 +1145,7 @@ export type Database = {
       receipt_lines: {
         Row: {
           accessibility: string
+          active: boolean
           condition: string
           description: string
           handling_requirements: string[]
@@ -1158,6 +1159,7 @@ export type Database = {
         }
         Insert: {
           accessibility: string
+          active?: boolean
           condition: string
           description?: string
           handling_requirements?: string[]
@@ -1171,6 +1173,7 @@ export type Database = {
         }
         Update: {
           accessibility?: string
+          active?: boolean
           condition?: string
           description?: string
           handling_requirements?: string[]
@@ -1552,7 +1555,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_configure_profile_v1: {
+        Args: {
+          p_active: boolean
+          p_display_name: string
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_site_id?: string | null
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      execute_inventory_command_v1: {
+        Args: {
+          p_command_id: string
+          p_command_type: string
+          p_payload: Json
+          p_site_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "Operator" | "Manager" | "Administrator"
@@ -1687,4 +1708,3 @@ export const Constants = {
     },
   },
 } as const
-

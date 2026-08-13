@@ -57,6 +57,7 @@ import {
   type PositionPrecision,
 } from "@/features/inventory/domain/inventory";
 import { describePosition } from "@/features/inventory/domain/selectors";
+import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider";
 
 const formatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
@@ -433,6 +434,7 @@ function ReverseMovementSheet({
 }
 
 export function MovementWorkspace() {
+  const { isOnline } = useMobileSync();
   const { snapshot, moveMaterial } = useInventory();
   const searchParams = useSearchParams();
   const initialLotId = searchParams.get("lot");
@@ -540,9 +542,9 @@ export function MovementWorkspace() {
           expectedVersion: lot.version,
         })),
       });
-      setMessage(
-        `${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} moved and recorded.`,
-      );
+      setMessage(isOnline
+        ? `${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} moved and recorded.`
+        : `${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} saved on this device and queued for shared sync.`);
       setSelected({});
       setQuantities({});
       setReason("");
@@ -1002,7 +1004,7 @@ export function MovementWorkspace() {
                       autoComplete="name"
                     />
                     <FieldDescription>
-                      Required for every movement until authentication launches.
+                      Recorded with the authenticated account and preserved as movement evidence.
                     </FieldDescription>
                   </Field>
                   {error ? <FieldError>{error}</FieldError> : null}

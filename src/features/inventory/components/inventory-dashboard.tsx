@@ -15,7 +15,7 @@ export function InventoryDashboard({ initialQuery = "" }: { initialQuery?: strin
         action={<Badge variant="outline" className="gap-1.5 bg-card"><MapPin aria-hidden="true" data-icon="inline-start" />Lavon Yard</Badge>}
       />
       <div className="flex items-center justify-between rounded-xl border bg-card px-4 py-3">
-        <p className="text-sm text-muted-foreground">Inventory records and photos are stored on this device until shared infrastructure launches.</p>
+        <p className="text-sm text-muted-foreground">Inventory records and private photos sync through the temporary shared Supabase workspace.</p>
         <BackupSheet />
       </div>
       <ProjectFinder initialQuery={initialQuery} />

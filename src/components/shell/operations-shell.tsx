@@ -7,19 +7,22 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import type { CurrentOperator } from "@/features/auth/server/session";
+import { MobileSyncProvider } from "@/features/mobile/components/mobile-sync-provider";
 
 export function OperationsShell({ children, operator }: { children: ReactNode; operator: CurrentOperator | null }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset id="main-content" tabIndex={-1}>
-        <TopNavigation operator={operator} />
-        <div className="flex min-w-0 flex-1 flex-col px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
-          <div className="mx-auto flex w-full max-w-[90rem] min-w-0 flex-1 flex-col">
-            {children}
+    <MobileSyncProvider operator={operator}>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset id="main-content" tabIndex={-1}>
+          <TopNavigation operator={operator} />
+          <div className="flex min-w-0 flex-1 flex-col px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
+            <div className="mx-auto flex w-full max-w-[90rem] min-w-0 flex-1 flex-col">
+              {children}
+            </div>
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </MobileSyncProvider>
   );
 }

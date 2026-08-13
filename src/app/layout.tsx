@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   },
   description: "The operations workspace for Texas Building Specialties.",
   icons: { icon: "/icon.svg" },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "TBS Yard",
+  },
 };
 
 export const viewport: Viewport = {

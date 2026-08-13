@@ -23,7 +23,7 @@ export async function updateSession(request: NextRequest) {
   })
 
   const { data } = await supabase.auth.getClaims()
-  const isPublicRoute = request.nextUrl.pathname === "/login"
+  const isPublicRoute = ["/login", "/offline", "/sw.js", "/manifest.webmanifest"].includes(request.nextUrl.pathname)
 
   if (!data?.claims && !isPublicRoute) {
     const loginUrl = request.nextUrl.clone()

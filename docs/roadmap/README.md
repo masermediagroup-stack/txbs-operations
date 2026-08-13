@@ -19,8 +19,8 @@ This directory is the implementation-planning source for the next TBS Operations
 | 3 | [Material Movement](phase-03-material-movement/v1.md) | [Implemented](phase-03-material-movement/implementation-report-v1.md) | Phase 2 |
 | 4 | [Project Readiness and Outbound](phase-04-project-readiness-outbound/v1.md) | [Implemented](phase-04-project-readiness-outbound/implementation-report-v1.md) | Phase 3 |
 | 5 | [Issues and Material Condition](phase-05-issues-material-condition/v2.md) | Implemented | Phase 4 |
-| 6 | [Supabase and Authentication](phase-06-supabase-authentication/v1.md) ([temporary validation plan](phase-06-supabase-authentication/temporary-validation-plan-v1.md)) | Temporary environment choices approved; implementation not started | Phase 5 and remaining setup gates |
-| 7 | [Mobile Yard Companion](phase-07-mobile-yard-companion/v1.md) | Planned | Phase 6 |
+| 6 | [Supabase and Authentication](phase-06-supabase-authentication/v1.md) ([temporary validation plan](phase-06-supabase-authentication/temporary-validation-plan-v1.md), [implementation plan](phase-06-supabase-authentication/implementation-plan-v1.md)) | [Shared demo deployed; Operator field activation remains](phase-06-supabase-authentication/implementation-report-v1.md) | Phase 5 |
+| 7 | [Mobile Yard Companion](phase-07-mobile-yard-companion/v1.md) ([implementation plan](phase-07-mobile-yard-companion/implementation-plan-v1.md)) | [Implemented; shared replay activated by Phase 6](phase-07-mobile-yard-companion/implementation-report-v1.md) | Phase 6 |
 | 8 | [QR Labels](phase-08-qr-labels/v1.md) | Gated | Confirmed warehouse and labeling hardware |
 | 9 | [Yard Map](phase-09-yard-map/v1.md) | Planned with entry gate | Phase 7 and a confirmed site diagram |
 | 10 | [Reporting and Operations Intelligence](phase-10-reporting-intelligence/v1.md) | Planned | Phase 7; Phase 9 only for map drill-through |
@@ -65,6 +65,7 @@ The report for every phase must include:
 - Local structured records and photos must be preserved and migrated into Supabase.
 - Phase 6 uses Microsoft Entra ID and three roles: Operator, Manager, and Administrator.
 - The temporary Phase 6 validation site may use administratively created Supabase password accounts with public signup disabled. This exception does not satisfy the final Microsoft Entra acceptance gate.
+- The temporary demo provisions one Operator account for normal desktop/mobile use. The existing bootstrap Administrator is setup-only; Manager and additional Administrator accounts are deferred while their authorization rules remain implemented.
 - Phase 6 will first validate the production architecture in a visibly labeled, disposable Supabase/Vercel environment. Temporary infrastructure may not weaken Auth, RLS, media privacy, or audit requirements.
 - Temporary test data is never silently promoted to production. Repository migrations, policies, tests, and import evidence are recreated against a separately approved production environment.
 - Phase 8 stays gated until the warehouse, printer, stock, durability, and placement workflow are confirmed.

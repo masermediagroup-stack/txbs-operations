@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useDeferredValue, useState } from "react"
+import { useDeferredValue, useState, useSyncExternalStore } from "react"
 import { MapPin, Search, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,7 @@ import { projectLots, projectPackageTotal, searchInventory } from "@/features/in
 
 type ProjectSort = "recent" | "name" | "packages"
 const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+const subscribeToHydration = () => () => undefined
 
 export function ProjectFinder({ heading = "Active Projects", initialQuery = "" }: { heading?: string; initialQuery?: string }) {
   const { snapshot, isHydrating } = useInventory()
@@ -21,6 +22,7 @@ export function ProjectFinder({ heading = "Active Projects", initialQuery = "" }
   const [status, setStatus] = useState("all")
   const [locationId, setLocationId] = useState("all")
   const [sort, setSort] = useState<ProjectSort>("recent")
+  const isInteractive = useSyncExternalStore(subscribeToHydration, () => true, () => false)
   const deferredQuery = useDeferredValue(query)
   const projects = searchInventory(snapshot, deferredQuery)
     .filter(({ project }) => status === "all" || project.status === status)
@@ -30,7 +32,7 @@ export function ProjectFinder({ heading = "Active Projects", initialQuery = "" }
   return <section className="flex flex-col gap-5" aria-labelledby="project-finder-heading">
     <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="grid lg:grid-cols-[minmax(0,1fr)_13rem]">
-        <div className="flex flex-col gap-5 p-5 sm:p-7"><div><h2 id="project-finder-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">Project Material Locator</h2><p className="mt-1.5 text-sm text-muted-foreground">Search project names, aliases, handwritten field labels, POs, job numbers, materials, or storage.</p></div><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search inventory project materials" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search projects and field labels" className="h-13 rounded-xl pr-12 pl-12 text-base md:text-base" />{query ? <Button type="button" variant="ghost" size="icon" onClick={() => setQuery("")} aria-label="Clear inventory search" className="absolute top-1/2 right-2 -translate-y-1/2"><X aria-hidden="true" /></Button> : null}</div></div>
+        <div className="flex flex-col gap-5 p-5 sm:p-7"><div><h2 id="project-finder-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">Project Material Locator</h2><p className="mt-1.5 text-sm text-muted-foreground">Search project names, aliases, handwritten field labels, POs, job numbers, materials, or storage.</p></div><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search inventory project materials" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search projects and field labels" className="h-13 rounded-xl pr-12 pl-12 text-base md:text-base" disabled={!isInteractive} />{query ? <Button type="button" variant="ghost" size="icon" onClick={() => setQuery("")} aria-label="Clear inventory search" className="absolute top-1/2 right-2 -translate-y-1/2"><X aria-hidden="true" /></Button> : null}</div></div>
         <dl className="flex items-center border-t-4 border-t-brand-orange px-5 py-4 lg:border-t-0 lg:border-l-4 lg:border-l-brand-orange"><div><dt className="text-xs font-medium text-muted-foreground">Projects on site</dt><dd className="mt-1 font-mono text-3xl font-semibold tabular-nums">{snapshot.projects.length}</dd>{isHydrating ? <p className="text-xs text-muted-foreground">Loading saved records…</p> : null}</div></dl>
       </div>
     </div>

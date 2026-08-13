@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useDeferredValue, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useDeferredValue, useRef, useState, useSyncExternalStore } from "react"
 import { ArrowUpRight, Camera, CheckCircle2, Filter } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -18,13 +18,13 @@ import { issueEvidenceState, isIssueActive } from "@/features/inventory/domain/s
 import { issuePriorities, issueStatuses, issueTypes, type IssueStatus } from "@/features/inventory/domain/inventory"
 
 const day = 86_400_000
+const subscribeToHydration = () => () => undefined
 
 function ageInDays(createdAt: string) { return Math.max(0, Math.floor((Date.now() - Date.parse(createdAt)) / day)) }
 function statusVariant(status: IssueStatus) { return status === "Resolved" ? "secondary" as const : status === "Dismissed" ? "outline" as const : status === "In Progress" ? "default" as const : "destructive" as const }
 
 export function IssuesOverview() {
   const { snapshot } = useInventory()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const paramsRef = useRef(searchParams.toString())
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "")
@@ -34,12 +34,13 @@ export function IssuesOverview() {
   const [projectId, setProjectId] = useState(() => searchParams.get("project") ?? "All projects")
   const [assignee, setAssignee] = useState(() => searchParams.get("assignee") ?? "All assignees")
   const [age, setAge] = useState(() => searchParams.get("age") ?? "Any age")
+  const isInteractive = useSyncExternalStore(subscribeToHydration, () => true, () => false)
   function updateFilter(key: string, value: string, defaultValue: string, update: (next: string) => void) {
     update(value)
     const next = new URLSearchParams(paramsRef.current)
     if (value === defaultValue) next.delete(key); else next.set(key, value)
     paramsRef.current = next.toString()
-    router.replace(`/inventory/issues${next.size ? `?${next}` : ""}`, { scroll: false })
+    window.history.replaceState(null, "", `/inventory/issues${next.size ? `?${next}` : ""}`)
   }
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const assignees = [...new Set(snapshot.issues.map((issue) => issue.assigneeName).filter((name): name is string => Boolean(name)))].toSorted()
@@ -68,14 +69,14 @@ export function IssuesOverview() {
       <CardHeader><CardTitle className="flex items-center gap-2"><Filter aria-hidden="true" />Issue worklist</CardTitle><CardDescription>Filter by operational state, affected work, ownership, and age.</CardDescription></CardHeader>
       <CardContent className="flex flex-col gap-5">
         <FieldGroup className="gap-3">
-          <Field><FieldLabel htmlFor="issue-search">Search Issues</FieldLabel><Input id="issue-search" name="q" type="search" value={query} onChange={(event) => updateFilter("q", event.target.value, "", setQuery)} placeholder="Title, project, type, or assignee" autoComplete="off" /></Field>
+          <Field><FieldLabel htmlFor="issue-search">Search Issues</FieldLabel><Input id="issue-search" name="q" type="search" value={query} onChange={(event) => updateFilter("q", event.target.value, "", setQuery)} placeholder="Title, project, type, or assignee" autoComplete="off" disabled={!isInteractive} /></Field>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-            <Field><FieldLabel htmlFor="issue-status">Status</FieldLabel><NativeSelect className="w-full" id="issue-status" name="status" value={status} onChange={(event) => updateFilter("status", event.target.value, "Active", setStatus)}><NativeSelectOption>Active</NativeSelectOption><NativeSelectOption>All statuses</NativeSelectOption>{issueStatuses.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
-            <Field><FieldLabel htmlFor="issue-type">Type</FieldLabel><NativeSelect className="w-full" id="issue-type" name="type" value={type} onChange={(event) => updateFilter("type", event.target.value, "All types", setType)}><NativeSelectOption>All types</NativeSelectOption>{issueTypes.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
-            <Field><FieldLabel htmlFor="issue-priority">Priority</FieldLabel><NativeSelect className="w-full" id="issue-priority" name="priority" value={priority} onChange={(event) => updateFilter("priority", event.target.value, "All priorities", setPriority)}><NativeSelectOption>All priorities</NativeSelectOption>{issuePriorities.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
-            <Field><FieldLabel htmlFor="issue-project">Project</FieldLabel><NativeSelect className="w-full" id="issue-project" name="project" value={projectId} onChange={(event) => updateFilter("project", event.target.value, "All projects", setProjectId)}><NativeSelectOption>All projects</NativeSelectOption>{snapshot.projects.map((project) => <NativeSelectOption key={project.id} value={project.id}>{project.name}</NativeSelectOption>)}</NativeSelect></Field>
-            <Field><FieldLabel htmlFor="issue-assignee">Assignee</FieldLabel><NativeSelect className="w-full" id="issue-assignee" name="assignee" value={assignee} onChange={(event) => updateFilter("assignee", event.target.value, "All assignees", setAssignee)}><NativeSelectOption>All assignees</NativeSelectOption><NativeSelectOption>Unassigned</NativeSelectOption>{assignees.map((name) => <NativeSelectOption key={name}>{name}</NativeSelectOption>)}</NativeSelect></Field>
-            <Field><FieldLabel htmlFor="issue-age">Age</FieldLabel><NativeSelect className="w-full" id="issue-age" name="age" value={age} onChange={(event) => updateFilter("age", event.target.value, "Any age", setAge)}>{["Any age", "7+ days", "14+ days", "30+ days"].map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field><FieldLabel htmlFor="issue-status">Status</FieldLabel><NativeSelect className="w-full" id="issue-status" name="status" value={status} disabled={!isInteractive} onChange={(event) => updateFilter("status", event.target.value, "Active", setStatus)}><NativeSelectOption>Active</NativeSelectOption><NativeSelectOption>All statuses</NativeSelectOption>{issueStatuses.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field><FieldLabel htmlFor="issue-type">Type</FieldLabel><NativeSelect className="w-full" id="issue-type" name="type" value={type} disabled={!isInteractive} onChange={(event) => updateFilter("type", event.target.value, "All types", setType)}><NativeSelectOption>All types</NativeSelectOption>{issueTypes.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field><FieldLabel htmlFor="issue-priority">Priority</FieldLabel><NativeSelect className="w-full" id="issue-priority" name="priority" value={priority} disabled={!isInteractive} onChange={(event) => updateFilter("priority", event.target.value, "All priorities", setPriority)}><NativeSelectOption>All priorities</NativeSelectOption>{issuePriorities.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field><FieldLabel htmlFor="issue-project">Project</FieldLabel><NativeSelect className="w-full" id="issue-project" name="project" value={projectId} disabled={!isInteractive} onChange={(event) => updateFilter("project", event.target.value, "All projects", setProjectId)}><NativeSelectOption>All projects</NativeSelectOption>{snapshot.projects.map((project) => <NativeSelectOption key={project.id} value={project.id}>{project.name}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field><FieldLabel htmlFor="issue-assignee">Assignee</FieldLabel><NativeSelect className="w-full" id="issue-assignee" name="assignee" value={assignee} disabled={!isInteractive} onChange={(event) => updateFilter("assignee", event.target.value, "All assignees", setAssignee)}><NativeSelectOption>All assignees</NativeSelectOption><NativeSelectOption>Unassigned</NativeSelectOption>{assignees.map((name) => <NativeSelectOption key={name}>{name}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field><FieldLabel htmlFor="issue-age">Age</FieldLabel><NativeSelect className="w-full" id="issue-age" name="age" value={age} disabled={!isInteractive} onChange={(event) => updateFilter("age", event.target.value, "Any age", setAge)}>{["Any age", "7+ days", "14+ days", "30+ days"].map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field>
           </div>
         </FieldGroup>
 

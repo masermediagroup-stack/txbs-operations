@@ -1,11 +1,13 @@
 "use client"
 
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 
 import type { InventorySnapshot } from "@/features/inventory/domain/inventory"
 import { IndexedDbInventoryPersistence } from "@/features/inventory/repositories/indexeddb-inventory-persistence"
 import { createInventoryService, type AddIssueCommentInput, type AddMaterialInput, type AssignIssueInput, type CancelOutboundBatchInput, type CreateOutboundBatchInput, type DepartOutboundBatchInput, type MarkOutboundReadyInput, type MoveMaterialInput, type RecordIssueInput, type ReverseMovementInput, type ReverseOutboundBatchInput, type SaveReceiptDraftInput, type TransitionIssueInput, type VerifyLotInput } from "@/features/inventory/services/inventory-service"
+import { createRemoteInventoryService } from "@/features/inventory/services/remote-inventory-service"
+import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
 
 const SNAPSHOT_KEY = ["inventory", "snapshot"] as const
 
@@ -34,10 +36,22 @@ type InventoryContextValue = {
 
 const InventoryContext = createContext<InventoryContextValue | null>(null)
 
-function InventoryState({ seed, children }: { seed: InventorySnapshot; children: ReactNode }) {
+function InventoryState({ seed, backend, children }: { seed: InventorySnapshot; backend: "local" | "supabase"; children: ReactNode }) {
   const queryClient = useQueryClient()
-  const service = useMemo(() => createInventoryService(new IndexedDbInventoryPersistence(), seed), [seed])
-  const query = useQuery({ queryKey: SNAPSHOT_KEY, queryFn: service.load, initialData: seed, refetchOnMount: "always", staleTime: 0 })
+  const { isOnline, queueCommand, registerInventoryCache } = useMobileSync()
+  const persistence = useMemo(() => new IndexedDbInventoryPersistence(), [])
+  const localService = useMemo(() => createInventoryService(persistence, seed), [persistence, seed])
+  const remoteService = useMemo(() => createRemoteInventoryService(
+    () => queryClient.getQueryData<InventorySnapshot>(SNAPSHOT_KEY) ?? seed,
+  ), [queryClient, seed])
+  const service = backend === "supabase" && isOnline ? remoteService : localService
+  const query = useQuery({
+    queryKey: SNAPSHOT_KEY,
+    queryFn: service.load,
+    initialData: seed,
+    refetchOnMount: "always",
+    staleTime: 0,
+  })
 
   const apply = useCallback(async (operation: Promise<InventorySnapshot>) => {
     const snapshot = await operation
@@ -45,40 +59,110 @@ function InventoryState({ seed, children }: { seed: InventorySnapshot; children:
     return snapshot
   }, [queryClient])
 
+  useEffect(() => {
+    registerInventoryCache(query.data.sites.map((site) => site.id), query.data.revision)
+  }, [query.data.revision, query.data.sites, registerInventoryCache])
+
+  useEffect(() => {
+    if (backend !== "supabase" || !isOnline || query.data === seed) return
+    void persistence.getAllPhotos().then((photos) => persistence.replace(query.data, photos))
+  }, [backend, isOnline, persistence, query.data, seed])
+
+  const queueOffline = useCallback(async (input: Parameters<typeof queueCommand>[0]) => {
+    if (isOnline) return
+    await queueCommand(input)
+  }, [isOnline, queueCommand])
+
   const value = useMemo<InventoryContextValue>(() => ({
     snapshot: query.data,
     isHydrating: query.isFetching && query.data.revision === 0,
-    addMaterial: async (input) => { await apply(service.addMaterial(input)) },
-    verifyLot: async (input) => { await apply(service.verifyLot(input)) },
-    recordIssue: async (input) => { await apply(service.recordIssue(input)) },
-    assignIssue: async (input) => { await apply(service.assignIssue(input)) },
-    addIssueComment: async (input) => { await apply(service.addIssueComment(input)) },
-    transitionIssue: async (input) => { await apply(service.transitionIssue(input)) },
+    addMaterial: async (input) => {
+      const project = query.data.projects.find((item) => item.id === input.projectId)
+      await apply(service.addMaterial(input))
+      if (project) await queueOffline({ commandType: "material.add", siteId: project.siteId, entityIds: [input.projectId], payload: input as unknown as Record<string, unknown> })
+    },
+    verifyLot: async (input) => {
+      const lot = query.data.lots.find((item) => item.id === input.lotId)
+      await apply(service.verifyLot(input))
+      if (lot) await queueOffline({ commandType: "verification.confirm", siteId: lot.siteId, entityIds: [lot.id], entityBaseVersions: { [lot.id]: lot.version }, payload: input as unknown as Record<string, unknown> })
+    },
+    recordIssue: async (input) => {
+      await apply(service.recordIssue(input))
+      await queueOffline({ clientMutationId: input.clientMutationId, commandType: "issue.record", siteId: input.siteId, entityIds: [input.projectId, input.lotId, input.receiptId, input.locationId, input.movementId, input.outboundBatchId].filter((id): id is string => Boolean(id)), payload: input as unknown as Record<string, unknown> })
+    },
+    assignIssue: async (input) => {
+      const issue = query.data.issues.find((item) => item.id === input.issueId)
+      await apply(service.assignIssue(input))
+      if (issue) await queueOffline({ commandType: "issue.assign", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> })
+    },
+    addIssueComment: async (input) => {
+      const issue = query.data.issues.find((item) => item.id === input.issueId)
+      await apply(service.addIssueComment(input))
+      if (issue) await queueOffline({ commandType: "issue.comment", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> })
+    },
+    transitionIssue: async (input) => {
+      const issue = query.data.issues.find((item) => item.id === input.issueId)
+      await apply(service.transitionIssue(input))
+      if (issue) await queueOffline({ commandType: "issue.transition", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> })
+    },
     saveReceiptDraft: async (input) => {
       const snapshot = await apply(service.saveReceiptDraft(input))
       const receipt = input.receiptId ? snapshot.receipts.find((item) => item.id === input.receiptId) : snapshot.receipts.toSorted((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0]
       if (!receipt) throw new Error("Receipt draft was saved but could not be reopened.")
+      await queueOffline({ commandType: "receipt.save-draft", siteId: input.siteId, entityIds: [receipt.id, input.projectId].filter((id): id is string => Boolean(id)), payload: { ...input, receiptId: receipt.id } as unknown as Record<string, unknown> })
       return { receiptId: receipt.id, lineIds: receipt.lineIds }
     },
-    completeReceipt: async (receiptId, operatorName) => { await apply(service.completeReceipt(receiptId, operatorName)) },
-    moveMaterial: async (input) => { await apply(service.moveMaterial(input)) },
-    reverseMovement: async (input) => { await apply(service.reverseMovement(input)) },
-    createOutboundBatch: async (input) => { await apply(service.createOutboundBatch(input)) },
-    markOutboundReady: async (input) => { await apply(service.markOutboundReady(input)) },
-    departOutboundBatch: async (input) => { await apply(service.departOutboundBatch(input)) },
-    cancelOutboundBatch: async (input) => { await apply(service.cancelOutboundBatch(input)) },
-    reverseOutboundBatch: async (input) => { await apply(service.reverseOutboundBatch(input)) },
+    completeReceipt: async (receiptId, operatorName) => {
+      const receipt = query.data.receipts.find((item) => item.id === receiptId)
+      await apply(service.completeReceipt(receiptId, operatorName))
+      if (receipt) await queueOffline({ commandType: "receipt.complete", siteId: receipt.siteId, entityIds: [receipt.id, receipt.projectId].filter((id): id is string => Boolean(id)), payload: { receiptId, operatorName } })
+    },
+    moveMaterial: async (input) => {
+      const lots = input.lines.map((line) => query.data.lots.find((lot) => lot.id === line.lotId)).filter((lot): lot is NonNullable<typeof lot> => Boolean(lot))
+      await apply(service.moveMaterial(input))
+      if (lots[0]) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "movement.create", siteId: lots[0].siteId, entityIds: lots.map((lot) => lot.id), entityBaseVersions: Object.fromEntries(input.lines.map((line) => [line.lotId, line.expectedVersion])), payload: input as unknown as Record<string, unknown> })
+    },
+    reverseMovement: async (input) => {
+      const movement = query.data.movements.find((item) => item.id === input.movementId)
+      await apply(service.reverseMovement(input))
+      if (movement) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "movement.reverse", siteId: movement.siteId, entityIds: [movement.id], payload: input as unknown as Record<string, unknown> })
+    },
+    createOutboundBatch: async (input) => {
+      const project = query.data.projects.find((item) => item.id === input.projectId)
+      await apply(service.createOutboundBatch(input))
+      if (project) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.plan", siteId: project.siteId, entityIds: [project.id, ...input.lines.map((line) => line.lotId)], entityBaseVersions: Object.fromEntries(input.lines.map((line) => [line.lotId, line.expectedVersion])), payload: input as unknown as Record<string, unknown> })
+    },
+    markOutboundReady: async (input) => {
+      const batch = query.data.outboundBatches.find((item) => item.id === input.batchId)
+      await apply(service.markOutboundReady(input))
+      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.ready", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+    },
+    departOutboundBatch: async (input) => {
+      const batch = query.data.outboundBatches.find((item) => item.id === input.batchId)
+      await apply(service.departOutboundBatch(input))
+      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.depart", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+    },
+    cancelOutboundBatch: async (input) => {
+      const batch = query.data.outboundBatches.find((item) => item.id === input.batchId)
+      await apply(service.cancelOutboundBatch(input))
+      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.cancel", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+    },
+    reverseOutboundBatch: async (input) => {
+      const batch = query.data.outboundBatches.find((item) => item.id === input.batchId)
+      await apply(service.reverseOutboundBatch(input))
+      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.reverse", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+    },
     exportBackup: service.exportBackup,
     importBackup: async (file) => { await apply(service.importBackup(file)) },
     getPhoto: service.getPhoto,
-  }), [apply, query.data, query.isFetching, service])
+  }), [apply, query.data, query.isFetching, queueOffline, service])
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>
 }
 
-export function InventoryProvider({ seed, children }: { seed: InventorySnapshot; children: ReactNode }) {
+export function InventoryProvider({ seed, backend = "local", children }: { seed: InventorySnapshot; backend?: "local" | "supabase"; children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
-  return <QueryClientProvider client={queryClient}><InventoryState seed={seed}>{children}</InventoryState></QueryClientProvider>
+  return <QueryClientProvider client={queryClient}><InventoryState seed={seed} backend={backend}>{children}</InventoryState></QueryClientProvider>
 }
 
 export function useInventory() {
