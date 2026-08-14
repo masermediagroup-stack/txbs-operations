@@ -62,6 +62,7 @@ The report for every phase must include:
 - Material becomes `Needs Verification` after 14 days without confirmation.
 - Pre-authentication mutations require an operator name every time.
 - Every Damaged Issue requires at least one linked damage photo. Other Issue types keep optional photo evidence unless their originating workflow already requires it.
+- Receiving requires 1–3 material photos per receipt line. Movement photos remain optional and allow no more than 3 per movement.
 - Local structured records and photos must be preserved and migrated into Supabase.
 - Phase 6 uses Microsoft Entra ID and three roles: Operator, Manager, and Administrator.
 - The temporary Phase 6 validation site may use administratively created Supabase password accounts with public signup disabled. This exception does not satisfy the final Microsoft Entra acceptance gate.

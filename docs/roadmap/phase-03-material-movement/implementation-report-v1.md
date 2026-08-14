@@ -7,10 +7,10 @@
 
 - Activated `/inventory/movements` for full, partial, and multi-lot movement with one confirmed destination.
 - Added project, material, and storage entry through the shared lot ledger's **Move material** action.
-- Added active-lot search plus project and current-location filters, editable quantities, exact/general/unknown destination positions, required reasons and operator names, optional notes, and proof photos.
+- Added active-lot search plus project and current-location filters, editable quantities, exact/general/unknown destination positions, required reasons and operator names, optional notes, and up to three optional proof photos.
 - Handling requirements are consolidated and displayed before confirmation.
 - Full moves update the existing lot. Partial moves split a child lot with parent/root lineage while leaving the remainder at its source.
-- Every movement atomically records a header, independent lines, source/destination evidence, resulting lot versions, optional photo evidence, and append-only activity.
+- Every movement atomically records a header, independent lines, source/destination evidence, resulting lot versions, up to three optional photos, and append-only activity.
 - Reversals create new movement and activity records. They stop if resulting material changed after the original movement and never delete or merge history.
 - Desktop uses a dense selection table. Mobile uses ten-at-a-time cards, 44px destination controls, camera capture, and a sticky confirmation action.
 

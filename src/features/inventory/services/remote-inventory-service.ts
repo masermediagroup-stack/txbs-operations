@@ -51,6 +51,19 @@ async function stagePhoto(
   return { id: uploaded.id, fileName: uploaded.fileName, photoType, caption }
 }
 
+async function stagePhotos(
+  commandId: string,
+  siteId: string,
+  files: File[],
+  photoType: PhotoType,
+  caption: string,
+) {
+  const selected = files.filter((file) => file.size > 0)
+  if (selected.length > 3) throw new Error("Select no more than 3 photos.")
+  const uploads = await Promise.all(selected.map((file) => stagePhoto(commandId, siteId, file, photoType, caption)))
+  return uploads.filter((upload): upload is StagedPhoto => Boolean(upload))
+}
+
 async function executeCommand(
   commandId: string,
   commandType: InventoryCommandType,
@@ -189,7 +202,7 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
         accessibility: line.accessibility,
         handlingRequirements: line.handlingRequirements,
         targetLocationId: line.targetLocationId,
-        photoUpload: await stagePhoto(id, input.siteId, line.file, line.photoType ?? "Material", line.caption ?? line.materialName),
+        photoUploads: await stagePhotos(id, input.siteId, [...(line.files ?? []), ...(line.file ? [line.file] : [])], line.photoType ?? "Material", line.caption ?? line.materialName),
       })))
       await executeCommand(id, "receipt.save-draft", input.siteId, {
         receiptId,
@@ -214,7 +227,7 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
     async moveMaterial(input: MoveMaterialInput) {
       const lot = required(getSnapshot().lots.find((item) => item.id === input.lines[0]?.lotId), "Material lot not found.")
       const id = commandId(input.clientMutationId)
-      const photoUpload = await stagePhoto(id, lot.siteId, input.file, input.photoType ?? "Location", input.caption ?? input.note)
+      const photoUploads = await stagePhotos(id, lot.siteId, [...(input.files ?? []), ...(input.file ? [input.file] : [])], input.photoType ?? "Location", input.caption ?? input.note)
       await executeCommand(id, "movement.create", lot.siteId, {
         locationId: input.locationId,
         precision: input.precision,
@@ -224,7 +237,7 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
         reason: input.reason,
         note: input.note,
         lines: input.lines,
-        photoUpload,
+        photoUploads,
       })
       return refresh()
     },

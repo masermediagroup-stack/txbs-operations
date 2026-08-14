@@ -11,7 +11,11 @@ test("known-project receiving creates a durable material lot", async ({ page }) 
   await page.getByLabel("Quantity").fill("2")
   await page.getByLabel("Condition").selectOption("Good")
   await page.getByLabel("Storage assignment").selectOption({ label: "Conex 4" })
-  await page.getByLabel("Material photo").setInputFiles({ name: "received-material.jpg", mimeType: "image/jpeg", buffer: Buffer.from("material evidence") })
+  await page.getByLabel("Material photos").setInputFiles([
+    { name: "received-material-1.jpg", mimeType: "image/jpeg", buffer: Buffer.from("material evidence 1") },
+    { name: "received-material-2.jpg", mimeType: "image/jpeg", buffer: Buffer.from("material evidence 2") },
+    { name: "received-material-3.jpg", mimeType: "image/jpeg", buffer: Buffer.from("material evidence 3") },
+  ])
   await page.getByLabel("Physical handwritten project label applied").check()
   await page.getByLabel("Staging / default location").selectOption({ label: "Conex 4" })
   await page.getByLabel("Operator name").fill("Playwright Operator")

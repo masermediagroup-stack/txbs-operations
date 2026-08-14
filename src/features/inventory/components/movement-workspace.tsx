@@ -64,6 +64,10 @@ const formatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
+function files(form: FormData, name: string) {
+  return form.getAll(name).filter((item): item is File => item instanceof File && item.size > 0);
+}
+
 function locationName(
   snapshot: ReturnType<typeof useInventory>["snapshot"],
   id: string | null,
@@ -119,6 +123,7 @@ function MovementDetailSheet({
       lineDetails.map(({ group }) => group?.name ?? "Material lot"),
     ),
   ];
+  const movementPhotos = snapshot.photos.filter((photo) => photo.movementId === movement.id);
 
   return (
     <Sheet>
@@ -176,6 +181,9 @@ function MovementDetailSheet({
               {formatter.format(new Date(movement.occurredAt))} ·{" "}
               {movement.operatorName}
               {movement.note ? ` · ${movement.note}` : ""}
+              {movementPhotos.length
+                ? ` · ${movementPhotos.length} photo${movementPhotos.length === 1 ? "" : "s"} attached`
+                : ""}
             </p>
           </div>
           <span className="absolute top-4 right-4 inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-blue">
@@ -215,8 +223,8 @@ function MovementDetailSheet({
                   {movement.kind}
                 </Badge>
                 {reversed ? <Badge variant="secondary">Reversed</Badge> : null}
-                {movement.photoId ? (
-                  <Badge variant="outline">Photo attached</Badge>
+                {movementPhotos.length ? (
+                  <Badge variant="outline">{movementPhotos.length} photo{movementPhotos.length === 1 ? "" : "s"} attached</Badge>
                 ) : null}
               </div>
               <h3
@@ -518,9 +526,11 @@ export function MovementWorkspace() {
     setSaving(true);
     setError("");
     setMessage("");
-    const form = new FormData(event.currentTarget);
-    const evidence = form.get("movementPhoto");
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const evidence = files(form, "movementPhoto");
     try {
+      if (evidence.length > 3) throw new Error("Select no more than 3 movement photos.");
       await moveMaterial({
         operatorName,
         reason,
@@ -531,7 +541,7 @@ export function MovementWorkspace() {
         row: (row || null) as "Front" | "Middle" | "Back" | null,
         column: (column || null) as "Left" | "Center" | "Right" | null,
         positionNote,
-        file: evidence instanceof File && evidence.size ? evidence : null,
+        files: evidence,
         photoType: "Location",
         lines: selectedLots.map((lot) => ({
           lotId: lot.id,
@@ -549,6 +559,8 @@ export function MovementWorkspace() {
       setQuantities({});
       setReason("");
       setNote("");
+      const photoInput = formElement.elements.namedItem("movementPhoto");
+      if (photoInput instanceof HTMLInputElement) photoInput.value = "";
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Material could not be moved.",
@@ -938,7 +950,9 @@ export function MovementWorkspace() {
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    multiple
                   />
+                  <FieldDescription>Optional. Select up to 3 photos.</FieldDescription>
                 </Field>
               </FieldGroup>
             </CardContent>

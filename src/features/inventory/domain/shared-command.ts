@@ -20,6 +20,7 @@ const upload = z.object({
   photoType: z.enum(photoTypes).optional(),
   caption: z.string().optional(),
 })
+const uploads = z.array(upload).max(3)
 const position = {
   locationId: nullableUuid,
   precision: z.enum(positionPrecisions),
@@ -100,6 +101,7 @@ const schemas = {
       handlingRequirements: z.array(z.string()),
       targetLocationId: nullableUuid,
       photoUpload: upload.nullable().optional(),
+      photoUploads: uploads.optional(),
     })).min(1),
   }),
   "receipt.complete": z.object({ receiptId: uuid }),
@@ -110,6 +112,7 @@ const schemas = {
     locationId: uuid,
     lines: z.array(lotLine).min(1),
     photoUpload: upload.nullable().optional(),
+    photoUploads: uploads.optional(),
   }),
   "movement.reverse": z.object({ movementId: uuid, note: z.string() }),
   "outbound.plan": z.object({ projectId: uuid, lines: z.array(lotLine).min(1) }),

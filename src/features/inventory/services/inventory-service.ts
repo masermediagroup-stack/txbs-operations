@@ -4,6 +4,7 @@ import type { InventoryPersistence, PhotoBlob } from "@/features/inventory/repos
 
 type LocationInput = { locationId: string | null; precision: PositionPrecision; row?: StoragePosition["row"]; column?: StoragePosition["column"]; positionNote?: string }
 type EvidenceInput = { file?: File | null; photoType?: PhotoType; caption?: string }
+type MultipleEvidenceInput = Omit<EvidenceInput, "file"> & { file?: File | null; files?: File[] }
 type OperatorInput = { operatorName: string }
 
 export type AddMaterialInput = OperatorInput & LocationInput & EvidenceInput & {
@@ -16,9 +17,9 @@ export type RecordIssueInput = OperatorInput & EvidenceInput & IssueLinksInput &
 export type AssignIssueInput = OperatorInput & { issueId: string; assigneeName: string }
 export type AddIssueCommentInput = OperatorInput & EvidenceInput & { issueId: string; body: string }
 export type TransitionIssueInput = OperatorInput & { issueId: string; toStatus: IssueStatus; note: string; resolvedProjectId?: string | null }
-export type ReceiptLineInput = EvidenceInput & { id?: string; materialName: string; description: string; packageType: PackageType; quantity: number | null; condition: ConditionState; protection: ProtectionState; accessibility: AccessibilityState; handlingRequirements: string[]; targetLocationId: string | null }
+export type ReceiptLineInput = MultipleEvidenceInput & { id?: string; materialName: string; description: string; packageType: PackageType; quantity: number | null; condition: ConditionState; protection: ProtectionState; accessibility: AccessibilityState; handlingRequirements: string[]; targetLocationId: string | null }
 export type SaveReceiptDraftInput = OperatorInput & { receiptId?: string; siteId: string; receiptNumber: string; projectId: string | null; inspectionState: "Pending" | "Passed" | "Exception"; handwrittenProjectText: string; physicalLabelApplied: boolean; stagingLocationId: string | null; notes: string; documentFile?: File | null; labelFile?: File | null; lines: ReceiptLineInput[] }
-export type MoveMaterialInput = OperatorInput & EvidenceInput & LocationInput & { locationId: string; reason: string; note: string; clientMutationId: string; lines: Array<{ lotId: string; quantity: number | null; expectedVersion: number }> }
+export type MoveMaterialInput = OperatorInput & MultipleEvidenceInput & LocationInput & { locationId: string; reason: string; note: string; clientMutationId: string; lines: Array<{ lotId: string; quantity: number | null; expectedVersion: number }> }
 export type ReverseMovementInput = OperatorInput & { movementId: string; note: string; clientMutationId: string }
 export type CreateOutboundBatchInput = OperatorInput & { projectId: string; clientMutationId: string; lines: Array<{ lotId: string; quantity: number | null; expectedVersion: number }> }
 export type MarkOutboundReadyInput = OperatorInput & { batchId: string; clientMutationId: string }
@@ -48,6 +49,12 @@ function position(input: LocationInput): StoragePosition {
 
 function samePosition(left: StoragePosition, right: StoragePosition) {
   return left.precision === right.precision && left.row === right.row && left.column === right.column && left.note === right.note
+}
+
+function evidenceFiles(input: MultipleEvidenceInput) {
+  const files = [...(input.files ?? []), ...(input.file ? [input.file] : [])].filter((file, index, all) => file.size > 0 && all.indexOf(file) === index)
+  if (files.length > 3) throw new Error("Select no more than 3 photos.")
+  return files
 }
 
 async function sha256(blob: Blob) {
@@ -83,6 +90,14 @@ export function createInventoryService(persistence: InventoryPersistence, seed: 
     const photo: PhotoRecord = { id: crypto.randomUUID(), ...links, type: evidence.photoType ?? "Material", caption: evidence.caption?.trim() ?? "", fileName: evidence.file.name, contentType: evidence.file.type || "application/octet-stream", blobKey: crypto.randomUUID(), takenAt: now, uploadedAt: now, operatorName }
     snapshot.photos.push(photo)
     return { photo, blobs: [{ key: photo.blobKey, blob: evidence.file }] }
+  }
+
+  function addEvidenceFiles(snapshot: InventorySnapshot, now: string, operatorName: string, evidence: MultipleEvidenceInput, links: Parameters<typeof addEvidence>[4]) {
+    const records = evidenceFiles(evidence).map((file) => addEvidence(snapshot, now, operatorName, { file, photoType: evidence.photoType, caption: evidence.caption }, links))
+    return {
+      photos: records.flatMap((record) => record.photo ? [record.photo] : []),
+      blobs: records.flatMap((record) => record.blobs),
+    }
   }
 
   function createIssueRecord(snapshot: InventorySnapshot, now: string, input: RecordIssueInput, existingPhotoIds: string[] = []) {
@@ -252,8 +267,11 @@ export function createInventoryService(persistence: InventoryPersistence, seed: 
         const linePhotos: string[][] = []
         const blobs = [...documentEvidence.blobs, ...labelEvidence.blobs]
         input.lines.forEach((line) => {
-          const evidence = addEvidence(snapshot, now, operatorName, line, { siteId: input.siteId, projectId: input.projectId, lotId: null, receiptId, movementId: null, outboundBatchId: null, issueId: null, locationId: line.targetLocationId ?? input.stagingLocationId })
-          linePhotos.push(evidence.photo ? [evidence.photo.id] : [])
+          const existingPhotos = existingLinePhotos.get(line.id ?? "") ?? []
+          const selectedFiles = evidenceFiles(line)
+          if (existingPhotos.length + selectedFiles.length > 3) throw new Error("Each receipt line can have no more than 3 material photos.")
+          const evidence = addEvidenceFiles(snapshot, now, operatorName, { ...line, files: selectedFiles, file: null }, { siteId: input.siteId, projectId: input.projectId, lotId: null, receiptId, movementId: null, outboundBatchId: null, issueId: null, locationId: line.targetLocationId ?? input.stagingLocationId })
+          linePhotos.push(evidence.photos.map((photo) => photo.id))
           blobs.push(...evidence.blobs)
         })
         snapshot.receiptLines = snapshot.receiptLines.filter((line) => line.receiptId !== receiptId)
@@ -347,8 +365,8 @@ export function createInventoryService(persistence: InventoryPersistence, seed: 
           return { id: crypto.randomUUID(), movementId, sourceLotId: lot.id, resultingLotId: resultingLot.id, sourceLocationId, sourcePosition, destinationLocationId: destination.id, destinationPosition: structuredClone(destinationPosition), quantity: line.quantity, resultingLotVersion: resultingLot.version }
         })
         const projectIds = [...new Set(selectedLots.map(({ lot }) => lot.projectId))]
-        const evidence = addEvidence(snapshot, now, operatorName, { file: input.file, photoType: "Location", caption: input.note }, { siteId, projectId: projectIds.length === 1 ? projectIds[0] : null, lotId: null, receiptId: null, movementId, outboundBatchId: null, issueId: null, locationId: destination.id })
-        snapshot.movements.push({ id: movementId, siteId, kind: "Move", reason, note: input.note.trim(), operatorName, occurredAt: now, photoId: evidence.photo?.id ?? null, clientMutationId: input.clientMutationId, reversalOfMovementId: null })
+        const evidence = addEvidenceFiles(snapshot, now, operatorName, { files: evidenceFiles(input), photoType: "Location", caption: input.note }, { siteId, projectId: projectIds.length === 1 ? projectIds[0] : null, lotId: null, receiptId: null, movementId, outboundBatchId: null, issueId: null, locationId: destination.id })
+        snapshot.movements.push({ id: movementId, siteId, kind: "Move", reason, note: input.note.trim(), operatorName, occurredAt: now, photoId: evidence.photos[0]?.id ?? null, clientMutationId: input.clientMutationId, reversalOfMovementId: null })
         snapshot.movementLines.push(...movementLines)
         snapshot.activities.push({ id: crypto.randomUUID(), siteId, projectId: projectIds.length === 1 ? projectIds[0] : null, entityType: "Movement", entityId: movementId, type: "Material moved", description: `${movementLines.length} material lot${movementLines.length === 1 ? "" : "s"} moved to ${destination.name}.`, occurredAt: now, operatorName })
         return { snapshot, blobs: evidence.blobs }

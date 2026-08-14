@@ -40,6 +40,11 @@ test("moves a selected lot and preserves a reversible history event", async ({
     .selectOption({ label: destination });
   await page.getByLabel("Movement reason").fill("E2E staging move");
   await page.getByLabel("Operator name").fill("Playwright Operator");
+  await page.getByLabel("Proof photo").setInputFiles([
+    { name: "movement-1.jpg", mimeType: "image/jpeg", buffer: Buffer.from("movement evidence 1") },
+    { name: "movement-2.jpg", mimeType: "image/jpeg", buffer: Buffer.from("movement evidence 2") },
+    { name: "movement-3.jpg", mimeType: "image/jpeg", buffer: Buffer.from("movement evidence 3") },
+  ]);
   await page.getByRole("button", { name: "Move 1 lot" }).click();
 
   await expect(
@@ -51,6 +56,7 @@ test("moves a selected lot and preserves a reversible history event", async ({
   await expect(history).toContainText("Playwright Operator");
   await expect(history).toContainText(expectedProject);
   await expect(history).toContainText(expectedMaterial);
+  await expect(history).toContainText("3 photos attached");
   await expect(history.getByRole("button", { name: "Reverse" })).toBeVisible();
   await history
     .getByRole("button", { name: "View movement details for E2E staging move" })

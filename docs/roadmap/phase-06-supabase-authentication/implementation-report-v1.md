@@ -11,7 +11,13 @@
 - Replaced device-local online authority with permission-scoped Supabase reads and use-case-specific shared commands for material addition, verification, Receiving, Movement, Outbound, and Issues.
 - Kept the existing Inventory TanStack Query boundary and IndexedDB adapter. Authenticated online sessions use Supabase; IndexedDB remains the offline cache, recovery source, and Phase 7 queue companion.
 - Added authenticated, versioned command and snapshot Route Handlers. Commands use client UUIDs, entity versions, structured errors, atomic database execution, idempotent command receipts, Activity, and append-only Audit evidence.
-- Added private media staging and authenticated download routes. Receiving completion still requires a material photo for every active receipt line, and a new Damaged Issue requires damage evidence. Other workflow photos remain optional.
+- Added private media staging and authenticated download routes. Receiving completion requires 1–3 material photos for every active receipt line; Movement accepts 0–3 optional proof photos; and a new Damaged Issue requires damage evidence. Other workflow photos remain optional.
+
+### Field-test correction — 2026-08-14
+
+- Phase 6 Operator testing identified that Receiving and Movement accepted only one selected file.
+- The shared and offline evidence pipeline now accepts up to three files, preserves each as an independent private Photo record, and rejects a fourth file in the browser, local service, command schema, and database command boundary.
+- Migration `20260814120000_multiple_receiving_movement_photos.sql` preserves the existing command route and idempotency contract while attaching all selected photos in the same transaction.
 - Activated Phase 7 foreground/manual replay against the shared command endpoint, including queued image upload, completed-command removal, duplicate protection, and human-readable version conflicts.
 - Added an Administration surface and protected database function for profile activation, fixed-role assignment, and site membership configuration.
 - Imported the current repository baseline idempotently: 18 projects, 36 material groups, 36 present lots, 36 project notes, and 54 Activity events at Lavon Yard.

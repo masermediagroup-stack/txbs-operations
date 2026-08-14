@@ -42,8 +42,9 @@ Phase 3 was not started.
 
 ## Current operational rule amendment — 2026-08-07
 
-- Completing Receiving now requires at least one material photo for every receipt line, including unresolved shipments.
+- Completing Receiving now requires 1–3 material photos for every receipt line, including unresolved shipments.
 - A draft may still be saved without photos so field work is not lost.
 - Previously saved material photos remain attached when a draft is reopened or resaved and satisfy the completion requirement.
+- Reopened drafts enforce the three-photo maximum across existing and newly selected line evidence.
 - Document photos and label photos remain optional. Photos also remain optional for verification, movement, issue, and other non-receiving actions.
 - Validation passed with 13 targeted Inventory service tests and 6 desktop/mobile Receiving Playwright tests, including axe accessibility checks.

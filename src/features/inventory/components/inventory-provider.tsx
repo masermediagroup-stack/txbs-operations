@@ -109,7 +109,7 @@ function InventoryState({ seed, backend, children }: { seed: InventorySnapshot; 
       const snapshot = await apply(service.saveReceiptDraft(input))
       const receipt = input.receiptId ? snapshot.receipts.find((item) => item.id === input.receiptId) : snapshot.receipts.toSorted((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0]
       if (!receipt) throw new Error("Receipt draft was saved but could not be reopened.")
-      await queueOffline({ commandType: "receipt.save-draft", siteId: input.siteId, entityIds: [receipt.id, input.projectId].filter((id): id is string => Boolean(id)), payload: { ...input, receiptId: receipt.id } as unknown as Record<string, unknown> })
+      await queueOffline({ commandType: "receipt.save-draft", siteId: input.siteId, entityIds: [receipt.id, input.projectId].filter((id): id is string => Boolean(id)), payload: { ...input, receiptId: receipt.id, lines: input.lines.map((line, index) => ({ ...line, id: receipt.lineIds[index] })) } as unknown as Record<string, unknown> })
       return { receiptId: receipt.id, lineIds: receipt.lineIds }
     },
     completeReceipt: async (receiptId, operatorName) => {

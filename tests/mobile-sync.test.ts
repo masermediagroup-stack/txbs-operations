@@ -36,8 +36,8 @@ class MemoryMobileSyncPersistence implements MobileSyncPersistence {
 }
 
 describe("Phase 7 mobile sync journal", () => {
-  it("serializes a physical movement and retains its optional photo separately", () => {
-    const file = new File(["yard proof"], "move.jpg", { type: "image/jpeg" })
+  it("serializes a physical movement and retains multiple optional photos separately", () => {
+    const files = [1, 2, 3].map((number) => new File([`yard proof ${number}`], `move-${number}.jpg`, { type: "image/jpeg" }))
     const { mutation, photos } = buildQueuedMutation({
       clientMutationId: mutationId,
       commandType: "movement.create",
@@ -45,17 +45,17 @@ describe("Phase 7 mobile sync journal", () => {
       actor,
       entityIds: [lotId, lotId],
       entityBaseVersions: { [lotId]: 4 },
-      payload: { reason: "Move for access", lines: [{ lotId, expectedVersion: 4 }], file },
+      payload: { reason: "Move for access", lines: [{ lotId, expectedVersion: 4 }], files },
     }, "2026-08-12T14:00:00.000Z")
 
     expect(mutation.clientMutationId).toBe(mutationId)
     expect(mutation.entityIds).toEqual([lotId])
     expect(mutation.entityBaseVersions).toEqual({ [lotId]: 4 })
     expect(mutation.state).toBe("pending")
-    expect(mutation.photoIds).toEqual([photos[0].id])
-    expect(mutation.payload.file).toEqual({ queuedPhotoId: photos[0].id })
-    expect(photos[0]).toMatchObject({ fileName: "move.jpg", contentType: "image/jpeg", size: 10, fieldPath: "file", state: "pending" })
-    expect(photos[0].blob).toBe(file)
+    expect(mutation.photoIds).toEqual(photos.map((photo) => photo.id))
+    expect(mutation.payload.files).toEqual(photos.map((photo) => ({ queuedPhotoId: photo.id })))
+    expect(photos[0]).toMatchObject({ fileName: "move-1.jpg", contentType: "image/jpeg", fieldPath: "files[0]", state: "pending" })
+    expect(photos.map((photo) => photo.blob)).toEqual(files)
   })
 
   it("deduplicates replay envelopes by client mutation ID", async () => {
@@ -89,4 +89,3 @@ describe("Phase 7 mobile sync journal", () => {
     expect(formatBytes(25.4 * 1024 * 1024)).toBe("25 MB")
   })
 })
-

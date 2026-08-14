@@ -230,6 +230,17 @@ describe("receiving operations", () => {
     expect(received.receipts.find((item) => item.id === receipt.id)?.status).toBe("Received")
     expect(received.receiptLines.find((item) => item.id === savedLine.id)?.photoIds).toEqual(savedLine.photoIds)
   })
+
+  it("accepts up to three material photos per receipt line and rejects a fourth", async () => {
+    const service = createInventoryService(new MemoryInventoryPersistence(), inventorySeed)
+    const project = inventorySeed.projects[0]
+    const photos = [1, 2, 3].map((number) => new File([`evidence-${number}`], `material-${number}.jpg`, { type: "image/jpeg" }))
+    const draft = await service.saveReceiptDraft({ siteId: project.siteId, receiptNumber: "RCV-THREE-PHOTOS", projectId: project.id, inspectionState: "Passed", handwrittenProjectText: project.name, physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", lines: [{ ...line, file: null, files: photos }] })
+    const receipt = draft.receipts.at(-1)!
+    expect(draft.receiptLines.find((item) => item.id === receipt.lineIds[0])?.photoIds).toHaveLength(3)
+
+    await expect(service.saveReceiptDraft({ receiptId: receipt.id, siteId: project.siteId, receiptNumber: receipt.receiptNumber, projectId: project.id, inspectionState: "Passed", handwrittenProjectText: project.name, physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", lines: [{ ...line, id: receipt.lineIds[0], files: [new File(["fourth"], "material-4.jpg", { type: "image/jpeg" })], file: null }] })).rejects.toThrow("no more than 3")
+  })
 })
 
 describe("material movement", () => {
@@ -251,6 +262,19 @@ describe("material movement", () => {
     expect(moved.lots.find((item) => item.id === lot.id)).toMatchObject({ locationId: destination.id, quantity: 10, version: 2 })
     expect(moved.movementLines.at(-1)).toMatchObject({ sourceLotId: lot.id, resultingLotId: lot.id, sourceLocationId: inventorySeed.locations[0].id, destinationLocationId: destination.id, quantity: 10 })
     expect(moved.activities.at(-1)).toMatchObject({ type: "Material moved", operatorName: "Forklift Operator" })
+  })
+
+  it("stores up to three optional movement photos and rejects a fourth", async () => {
+    const { service, lot } = await movementFixture()
+    const photos = [1, 2, 3].map((number) => new File([`proof-${number}`], `move-${number}.jpg`, { type: "image/jpeg" }))
+    const moved = await service.moveMaterial({ operatorName: "Forklift Operator", reason: "Document movement", note: "Three views", clientMutationId: "move-three-photos", locationId: inventorySeed.locations[1].id, precision: "General", positionNote: "Destination", files: photos, lines: [{ lotId: lot.id, quantity: 10, expectedVersion: lot.version }] })
+    const movement = moved.movements.at(-1)!
+    expect(moved.photos.filter((photo) => photo.movementId === movement.id)).toHaveLength(3)
+
+    const secondFixture = await movementFixture()
+    const tooMany = [...photos, new File(["proof-4"], "move-4.jpg", { type: "image/jpeg" })]
+    await expect(secondFixture.service.moveMaterial({ operatorName: "Forklift Operator", reason: "Too many photos", note: "", clientMutationId: "move-four-photos", locationId: inventorySeed.locations[1].id, precision: "General", positionNote: "Destination", files: tooMany, lines: [{ lotId: secondFixture.lot.id, quantity: 10, expectedVersion: secondFixture.lot.version }] })).rejects.toThrow("no more than 3")
+    expect((await secondFixture.service.load()).movements).toHaveLength(0)
   })
 
   it("splits a partial quantity into a traceable child without changing totals", async () => {
