@@ -241,6 +241,17 @@ describe("receiving operations", () => {
 
     await expect(service.saveReceiptDraft({ receiptId: receipt.id, siteId: project.siteId, receiptNumber: receipt.receiptNumber, projectId: project.id, inspectionState: "Passed", handwrittenProjectText: project.name, physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", lines: [{ ...line, id: receipt.lineIds[0], files: [new File(["fourth"], "material-4.jpg", { type: "image/jpeg" })], file: null }] })).rejects.toThrow("no more than 3")
   })
+
+  it("stores up to three packing slip photos and rejects a fourth", async () => {
+    const service = createInventoryService(new MemoryInventoryPersistence(), inventorySeed)
+    const project = inventorySeed.projects[0]
+    const documents = [1, 2, 3].map((number) => new File([`document-${number}`], `packing-slip-${number}.jpg`, { type: "image/jpeg" }))
+    const draft = await service.saveReceiptDraft({ siteId: project.siteId, receiptNumber: "RCV-THREE-DOCUMENTS", projectId: project.id, inspectionState: "Passed", handwrittenProjectText: project.name, physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", documentFiles: documents, lines: [line] })
+    const receipt = draft.receipts.at(-1)!
+    expect(receipt.documentPhotoIds).toHaveLength(3)
+
+    await expect(service.saveReceiptDraft({ receiptId: receipt.id, siteId: project.siteId, receiptNumber: receipt.receiptNumber, projectId: project.id, inspectionState: "Passed", handwrittenProjectText: project.name, physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", documentFiles: [new File(["fourth"], "packing-slip-4.jpg", { type: "image/jpeg" })], lines: [{ ...line, id: receipt.lineIds[0] }] })).rejects.toThrow("no more than 3")
+  })
 })
 
 describe("material movement", () => {

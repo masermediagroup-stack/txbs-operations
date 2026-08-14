@@ -48,3 +48,10 @@ Phase 3 was not started.
 - Reopened drafts enforce the three-photo maximum across existing and newly selected line evidence.
 - Document photos and label photos remain optional. Photos also remain optional for verification, movement, issue, and other non-receiving actions.
 - Validation passed with 13 targeted Inventory service tests and 6 desktop/mobile Receiving Playwright tests, including axe accessibility checks.
+
+## Receiving photo-slot amendment — 2026-08-14
+
+- Packing-slip/document evidence and receipt-line material evidence now use three explicit square upload slots with previews, replacement, and individual removal.
+- Document evidence remains optional with a maximum of three photos per receipt. Material evidence remains required with a minimum of one and maximum of three photos per receipt line.
+- Local IndexedDB and shared Supabase command paths both preserve all selected evidence; saved receipt document evidence is included when enforcing the three-photo limit.
+- Validation passed with 38 unit tests, desktop/mobile Receiving Playwright flows, axe accessibility checks, strict TypeScript, ESLint, and the Next.js 16.3 production build.

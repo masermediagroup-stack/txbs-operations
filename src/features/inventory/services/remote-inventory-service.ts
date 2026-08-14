@@ -189,7 +189,7 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
     async saveReceiptDraft(input: SaveReceiptDraftInput) {
       const id = commandId()
       const receiptId = input.receiptId ?? crypto.randomUUID()
-      const documentUpload = await stagePhoto(id, input.siteId, input.documentFile, "Document", "Receiving document")
+      const documentUploads = await stagePhotos(id, input.siteId, [...(input.documentFiles ?? []), ...(input.documentFile ? [input.documentFile] : [])], "Document", "Receiving document")
       const labelUpload = await stagePhoto(id, input.siteId, input.labelFile, "Label", input.handwrittenProjectText)
       const lines = await Promise.all(input.lines.map(async (line) => ({
         id: line.id ?? crypto.randomUUID(),
@@ -213,7 +213,7 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
         physicalLabelApplied: input.physicalLabelApplied,
         stagingLocationId: input.stagingLocationId,
         notes: input.notes,
-        documentUpload,
+        documentUploads,
         labelUpload,
         lines,
       })

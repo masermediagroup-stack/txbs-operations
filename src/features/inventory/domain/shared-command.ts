@@ -88,6 +88,7 @@ const schemas = {
     stagingLocationId: nullableUuid,
     notes: z.string(),
     documentUpload: upload.nullable().optional(),
+    documentUploads: uploads.optional(),
     labelUpload: upload.nullable().optional(),
     lines: z.array(z.object({
       id: uuid,
