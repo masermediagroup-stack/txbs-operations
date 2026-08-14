@@ -416,7 +416,7 @@ export function ReceivingWorkspace() {
                     id="documentPhoto"
                     name="documentPhoto"
                     label="Packing slip / document photos"
-                    description="Optional. Add up to 3 photos."
+                    description="Optional. Add up to 3 photos from your camera or photo library."
                     existingCount={
                       snapshot.receipts.find(
                         (receipt) => receipt.id === receiptId,
@@ -617,7 +617,7 @@ export function ReceivingWorkspace() {
                     id={`linePhoto-${line.key}`}
                     name={`linePhoto-${line.key}`}
                     label="Material photos"
-                    description="Required to receive. Add 1–3 photos for this material line."
+                    description="Required to receive. Add 1–3 photos from your camera or photo library."
                     existingCount={
                       snapshot.receiptLines.find(
                         (savedLine) => savedLine.id === line.id,
@@ -704,8 +704,10 @@ export function ReceivingWorkspace() {
                       name="labelPhoto"
                       type="file"
                       accept="image/*"
-                      capture="environment"
                     />
+                    <FieldDescription>
+                      Choose a photo from your camera or photo library.
+                    </FieldDescription>
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="stagingLocation">

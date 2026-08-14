@@ -99,7 +99,6 @@ export function PhotoUploadSlots({
                 name={name}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="peer sr-only"
                 onChange={(event) =>
                   selectPhoto(index, event.target.files?.[0])

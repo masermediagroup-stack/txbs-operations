@@ -80,6 +80,8 @@ test("receiving requires line photos while allowing a photo-free draft", async (
 test("receiving is accessible at the current viewport", async ({ page }) => {
   await page.goto("/inventory/receiving");
   await expect(page.getByLabel("Receipt or packing-slip number")).toBeVisible();
+  await expect(page.locator('input[type="file"][accept="image/*"]')).toHaveCount(7);
+  await expect(page.locator('input[type="file"][capture]')).toHaveCount(0);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
