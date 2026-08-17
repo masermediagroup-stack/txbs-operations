@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { BarChart3 } from "lucide-react";
 
-import { ModulePlaceholderPage } from "@/components/shared/module-placeholder-page";
+import { getCurrentOperator } from "@/features/auth/server/session";
+import { InventoryProvider } from "@/features/inventory/components/inventory-provider";
+import { inventorySeed } from "@/features/inventory/data/seed-data";
+import { ReportsWorkspace } from "@/features/reports/components/reports-workspace";
 
 export const metadata: Metadata = { title: "Reports" };
+export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function Page() {
+  const operator = await getCurrentOperator();
   return (
-    <ModulePlaceholderPage
-      eyebrow="Operations"
-      title="Reports"
-      description="Operational reporting, performance views, and future executive dashboards will be organized here."
-      icon={BarChart3}
-    />
+    <InventoryProvider seed={inventorySeed} backend={operator ? "supabase" : "local"}>
+      <ReportsWorkspace role={operator?.role ?? "Operator"} />
+    </InventoryProvider>
   );
 }

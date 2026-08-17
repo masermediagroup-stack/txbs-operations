@@ -100,6 +100,18 @@ An append-only follow-up on an Issue. A comment records the operator, time, text
 
 An immutable record of an Issue being created, assigned, linked, or changing status. A transition preserves the acting operator, time, prior/current status, and required operational note.
 
+### Operational Report
+
+A reproducible read-only view derived from authorized operational records. A report never replaces its source records, treats unknown facts differently from zero, and provides a path back to the underlying work.
+
+### Verification Due Date
+
+The UTC date and time fourteen days after a Material Lot's latest Verification. A lot with no Verification is reported separately as Never verified; its first review date is fourteen days after the lot was recorded on site.
+
+### Recorded Material Age
+
+The elapsed time since a Material Lot was first recorded on site. It is not called Receipt age unless a durable Receipt-to-Lot relationship exists.
+
 ## Module ownership
 
 Inventory owns Inventory Projects, Material Groups and Lots, Storage, Receiving, Movement, Outbound, Activity, Photos, Verifications, and Issues. The Operations-level Projects area remains reserved for future cross-operational project records.

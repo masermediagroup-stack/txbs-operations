@@ -23,7 +23,7 @@ This directory is the implementation-planning source for the next TBS Operations
 | 7 | [Mobile Yard Companion](phase-07-mobile-yard-companion/v1.md) ([implementation plan](phase-07-mobile-yard-companion/implementation-plan-v1.md)) | [Implemented; shared replay activated by Phase 6](phase-07-mobile-yard-companion/implementation-report-v1.md) | Phase 6 |
 | 8 | [QR Labels](phase-08-qr-labels/v1.md) | Gated | Confirmed warehouse and labeling hardware |
 | 9 | [Yard Map](phase-09-yard-map/v1.md) | Planned with entry gate | Phase 7 and a confirmed site diagram |
-| 10 | [Reporting and Operations Intelligence](phase-10-reporting-intelligence/v1.md) | Planned | Phase 7; Phase 9 only for map drill-through |
+| 10 | [Reporting and Operations Intelligence](phase-10-reporting-intelligence/v1.md) ([implementation plan](phase-10-reporting-intelligence/implementation-plan-v1.md)) | [Implemented; TBS field acceptance pending](phase-10-reporting-intelligence/implementation-report-v1.md) | Phase 7; Phase 9 only for map drill-through |
 
 Phase 8 is non-blocking. Phases 9 and 10 may proceed while QR labeling remains gated.
 
