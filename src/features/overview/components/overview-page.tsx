@@ -18,17 +18,18 @@ const operationsModules = primaryNavigation.flatMap((route) => {
   return [route];
 });
 
-export function OverviewPage() {
+export function OverviewPage({ role = "Operator" }: { role?: "Operator" | "Tech" }) {
+  const visibleModules = role === "Tech" ? [] : operationsModules;
   return (
     <div className="flex flex-1 flex-col gap-8">
       <PageHeader
         eyebrow="Operations workspace"
         title="One clear view of TBS operations"
-        description="A responsive foundation for coordinating material, projects, purchasing, deliveries, vendors, and reporting across the business."
+        description={role === "Tech" ? "Your Tech account is ready. Assigned field installation and pickup workflows will appear here as those modules launch." : "A responsive foundation for coordinating material, projects, purchasing, deliveries, vendors, and reporting across the business."}
         action={
           <Badge variant="outline" className="gap-1.5 bg-card">
             <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
-            Phase 0 foundation
+            {role === "Tech" ? "Tech account" : "Phase 0 foundation"}
           </Badge>
         }
       />
@@ -37,16 +38,17 @@ export function OverviewPage() {
         <SectionHeader
           id="module-map-heading"
           title="Operations modules"
-          description="Every module has a stable route and a place in the shared application shell."
+          description={role === "Tech" ? "Yard operations and account administration are available only to Operator accounts." : "Every module has a stable route and a place in the shared application shell."}
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {operationsModules.map((route) => (
+          {visibleModules.map((route) => (
             <ModuleCard
               key={route.href}
               route={route}
               status={
                 route.href === "/inventory" ||
-                route.href === "/inventory/receiving"
+                route.href === "/inventory/receiving" ||
+                route.href === "/reports"
                   ? "active"
                   : "planned"
               }

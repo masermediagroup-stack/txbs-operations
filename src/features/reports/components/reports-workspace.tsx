@@ -6,7 +6,6 @@ import {
   Activity,
   AlertCircle,
   ArrowUpDown,
-  ArrowUpRight,
   BarChart3,
   Boxes,
   CalendarClock,
@@ -331,7 +330,7 @@ function compare(left: string | number, right: string | number) {
     : String(left).localeCompare(String(right), undefined, { numeric: true });
 }
 
-export function ReportsWorkspace({ role }: { role: "Operator" | "Manager" | "Administrator" }) {
+export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
   const { snapshot, isHydrating } = useInventory();
   const [category, setCategory] = useState<ReportCategory>("verification");
   const [filters, setFilters] = useState(initialFilters);
@@ -523,29 +522,32 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Manager" | "Adm
           </p>
           {sortedRows.length ? (
             <>
-              <div className="hidden overflow-x-auto rounded-xl border lg:block">
-                <table className="w-full min-w-[64rem] text-left text-sm">
+              <div className="hidden overflow-hidden rounded-xl border lg:block">
+                <table className="w-full table-fixed text-left text-[0.8125rem] xl:text-sm">
                   <thead className="bg-muted/55 text-xs text-muted-foreground">
                     <tr>
                       {["Record", ...(sortedRows[0]?.cells.map((cell) => cell.label) ?? []), "State"].map((label, index, all) => (
-                        <th key={label} className="px-3 py-2 font-medium">
+                        <th key={label} className={index === 0 ? "w-[22%] px-2 py-2 font-medium xl:px-3" : "px-2 py-2 font-medium xl:px-3"}>
                           {index === all.length - 1 ? label : (
-                            <button type="button" className="inline-flex items-center gap-1 rounded outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring" onClick={() => toggleSort(index)}>
+                            <button type="button" className="inline-flex max-w-full items-center gap-1 rounded text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring" onClick={() => toggleSort(index)}>
                               {label}<ArrowUpDown aria-hidden="true" className="size-3.5" />
                             </button>
                           )}
                         </th>
                       ))}
-                      <th className="px-3 py-2"><span className="sr-only">Open source</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {sortedRows.map((row) => (
-                      <tr key={row.id} className="border-t align-middle hover:bg-muted/30">
-                        <td className="px-3 py-3"><p className="font-medium">{row.title}</p><p className="text-xs text-muted-foreground">{row.subtitle}</p></td>
-                        {row.cells.map((cell) => <td key={cell.label} className="px-3 py-3 tabular-nums">{cell.display}</td>)}
-                        <td className="px-3 py-3"><Badge variant={row.badgeVariant}>{row.badge}</Badge></td>
-                        <td className="px-3 py-3"><Link href={row.href} aria-label={`Open source record for ${row.title}`} className="inline-flex size-9 items-center justify-center rounded-lg border hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ArrowUpRight aria-hidden="true" /></Link></td>
+                      <tr key={row.id} className="group relative cursor-pointer border-t align-middle transition-colors hover:bg-muted/45 focus-within:bg-muted/45">
+                        <td className="min-w-0 px-2 py-3 xl:px-3">
+                          <Link href={row.href} className="outline-none after:absolute after:inset-0 after:z-10 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring">
+                            <span className="block break-words font-medium">{row.title}</span>
+                            <span className="block break-words text-xs text-muted-foreground">{row.subtitle}</span>
+                          </Link>
+                        </td>
+                        {row.cells.map((cell) => <td key={cell.label} className="min-w-0 break-words px-2 py-3 align-middle tabular-nums xl:px-3">{cell.display}</td>)}
+                        <td className="min-w-0 px-2 py-3 xl:px-3"><Badge variant={row.badgeVariant} className="max-w-full whitespace-normal text-left">{row.badge}</Badge></td>
                       </tr>
                     ))}
                   </tbody>
@@ -553,11 +555,8 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Manager" | "Adm
               </div>
               <div className="flex flex-col gap-3 lg:hidden">
                 {sortedRows.map((row) => (
-                  <Link key={row.id} href={row.href} className="rounded-xl border p-4 outline-none hover:bg-muted/45 focus-visible:ring-2 focus-visible:ring-ring">
-                    <div className="flex items-start justify-between gap-3">
-                      <div><h2 className="font-semibold">{row.title}</h2><p className="text-xs text-muted-foreground">{row.subtitle}</p></div>
-                      <ArrowUpRight aria-hidden="true" className="size-5 shrink-0" />
-                    </div>
+                  <Link key={row.id} href={row.href} className="touch-manipulation rounded-xl border p-4 outline-none hover:bg-muted/45 focus-visible:ring-2 focus-visible:ring-ring">
+                    <div><h2 className="break-words font-semibold">{row.title}</h2><p className="break-words text-xs text-muted-foreground">{row.subtitle}</p></div>
                     <Badge variant={row.badgeVariant} className="mt-3">{row.badge}</Badge>
                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                       {row.cells.map((cell) => <div key={cell.label} className="flex items-start justify-between gap-4 border-t pt-2"><dt className="text-muted-foreground">{cell.label}</dt><dd className="text-right font-medium tabular-nums">{cell.display}</dd></div>)}

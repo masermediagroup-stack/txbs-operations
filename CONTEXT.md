@@ -4,7 +4,7 @@ This glossary records the operational language used by the application. It defin
 
 ## Business setting
 
-Texas Building Specialties currently operates a yard in Lavon, Texas. Lavon contains seven numbered Conex containers plus the confirmed North Yard, Middle Yard, and South Yard storage areas. A planned warehouse is an additional site; it does not replace Lavon.
+Texas Building Specialties currently operates a yard in Lavon, Texas. Lavon contains eight numbered Conex containers plus the confirmed North Yard, Middle Yard, and South Yard storage areas. A planned warehouse is an additional site; it does not replace Lavon.
 
 ## Core terms
 
@@ -14,7 +14,7 @@ A distinct TBS operating place that owns its locations and operational records. 
 
 ### Storage Location
 
-A named, addressable place at a Site where material can be stored or staged. Conex 1 through Conex 7 and the three named yard areas are Storage Locations.
+A named, addressable place at a Site where material can be stored or staged. Conex 1 through Conex 8 and the three named yard areas are Storage Locations.
 
 ### Storage Position
 

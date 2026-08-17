@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const INVENTORY_SCHEMA_VERSION = 5 as const
+export const INVENTORY_SCHEMA_VERSION = 6 as const
 export const VERIFICATION_WINDOW_DAYS = 14
 
 export const projectStatuses = ["Ordered", "Shipped", "Received", "Stored", "Ready for Delivery", "Delivered", "Installed"] as const
@@ -157,7 +157,7 @@ export function migrateInventorySnapshot(value: unknown): InventorySnapshot {
   const legacy = structuredClone(value) as Record<string, unknown>
   const version = Number(legacy.schemaVersion)
   if (version === INVENTORY_SCHEMA_VERSION) return inventorySnapshotSchema.parse(legacy)
-  if (![1, 2, 3, 4].includes(version)) return inventorySnapshotSchema.parse(legacy)
+  if (![1, 2, 3, 4, 5].includes(version)) return inventorySnapshotSchema.parse(legacy)
 
   if (version === 1) {
     legacy.lots = (legacy.lots as Array<Record<string, unknown>>).map((lot) => ({ ...lot, rootLotId: lot.id }))
@@ -208,6 +208,71 @@ export function migrateInventorySnapshot(value: unknown): InventorySnapshot {
   legacy.issues = issues
   legacy.issueComments = Array.isArray(legacy.issueComments) ? legacy.issueComments : []
   legacy.issueTransitions = Array.isArray(legacy.issueTransitions) ? legacy.issueTransitions : issues.map((issue) => ({ id: issue["id"], issueId: issue["id"], kind: "Created", fromStatus: null, toStatus: issue["status"], note: "Migrated foundation Issue.", occurredAt: issue["createdAt"], operatorName: issue["operatorName"], userId: null }))
+
+  const locations = legacy.locations as Array<Record<string, unknown>>
+  const projects = legacy.projects as Array<Record<string, unknown>>
+  const groups = legacy.groups as Array<Record<string, unknown>>
+  const lots = legacy.lots as Array<Record<string, unknown>>
+  const activities = legacy.activities as Array<Record<string, unknown>>
+  const conex8Id = "00000000-0000-4000-8000-000000000110"
+  if (!locations.some((location) => location["slug"] === "conex-8")) {
+    locations.push({
+      id: conex8Id,
+      siteId: "00000000-0000-4000-8000-000000000001",
+      slug: "conex-8",
+      name: "Conex 8",
+      type: "Conex",
+      zone: "Lavon Yard",
+      parentLocationId: null,
+      notes: "Keep project labels visible from the center aisle.",
+    })
+  }
+
+  const fwProject = projects.find((project) => project["slug"] === "fw-maudrie-walton")
+  const placeholderGroup = fwProject ? groups.find((group) => group["projectId"] === fwProject["id"] && group["name"] === "Architectural Specialties") : undefined
+  const placeholderLot = placeholderGroup ? lots.find((lot) => lot["groupId"] === placeholderGroup["id"]) : undefined
+  if (fwProject && placeholderGroup && placeholderLot && placeholderLot["version"] === 1) {
+    placeholderGroup["name"] = "Marker Boards"
+    placeholderGroup["description"] = "12-foot Marker Boards"
+    placeholderLot["locationId"] = conex8Id
+    placeholderLot["position"] = unknownPosition()
+    placeholderLot["packageType"] = "Loose"
+    placeholderLot["quantity"] = 8
+    placeholderLot["updatedAt"] = "2026-08-17T14:00:00.000Z"
+    placeholderLot["version"] = 2
+    placeholderLot["migrationNote"] = "Confirmed inventory update: quantity 8, 12-foot Marker Boards, stored in Conex 8; exact position remains unverified."
+    fwProject["updatedAt"] = "2026-08-17T14:00:00.000Z"
+
+    const accessoryGroup = groups.find((group) => group["projectId"] === fwProject["id"] && group["name"] === "Project Accessories")
+    const accessoryLot = accessoryGroup ? lots.find((lot) => lot["groupId"] === accessoryGroup["id"]) : undefined
+    const accessoryLotId = String(accessoryLot?.["id"] ?? "")
+    const accessoryIsReferenced = accessoryLotId !== "" && [
+      ...(legacy.photos as Array<Record<string, unknown>>).map((photo) => photo["lotId"]),
+      ...(legacy.verifications as Array<Record<string, unknown>>).map((verification) => verification["lotId"]),
+      ...(legacy.issues as Array<Record<string, unknown>>).map((issue) => issue["lotId"]),
+      ...(legacy.movementLines as Array<Record<string, unknown>>).flatMap((line) => [line["sourceLotId"], line["resultingLotId"]]),
+      ...(legacy.outboundLines as Array<Record<string, unknown>>).flatMap((line) => [line["sourceLotId"], line["resultingLotId"]]),
+    ].some((id) => id === accessoryLotId)
+    if (accessoryGroup && accessoryLot && accessoryLot["version"] === 1 && !accessoryIsReferenced) {
+      legacy.lots = lots.filter((lot) => lot["id"] !== accessoryLot["id"])
+      legacy.groups = groups.filter((group) => group["id"] !== accessoryGroup["id"])
+    }
+
+    if (!activities.some((activity) => activity["id"] === "00000000-0000-4000-8000-000000039000")) {
+      activities.push({
+        id: "00000000-0000-4000-8000-000000039000",
+        siteId: fwProject["siteId"],
+        projectId: fwProject["id"],
+        entityType: "Lot",
+        entityId: placeholderLot["id"],
+        type: "Material added",
+        description: "Inventory confirmed: 8 12-foot Marker Boards stored in Conex 8.",
+        occurredAt: "2026-08-17T14:00:00.000Z",
+        operatorName: "Tyler Vea",
+      })
+    }
+  }
+
   legacy.schemaVersion = INVENTORY_SCHEMA_VERSION
   return inventorySnapshotSchema.parse(legacy)
 }

@@ -12,7 +12,7 @@ type SyncOperator = {
   id: string
   email: string
   displayName: string
-  role: "Operator" | "Manager" | "Administrator"
+  role: "Operator" | "Tech"
 } | null
 
 type QueueCommandInput = Omit<QueueMutationInput, "actor">
@@ -186,6 +186,27 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return
+
+    if (process.env.NODE_ENV !== "production") {
+      void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+        await Promise.all(
+          registrations
+            .filter((registration) => registration.scope === `${window.location.origin}/`)
+            .map((registration) => registration.unregister()),
+        )
+
+        if ("caches" in window) {
+          const cacheNames = await window.caches.keys()
+          await Promise.all(
+            cacheNames
+              .filter((cacheName) => cacheName.startsWith("tbs-yard-"))
+              .map((cacheName) => window.caches.delete(cacheName)),
+          )
+        }
+      })
+      return
+    }
+
     let cancelled = false
 
     void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then((registration) => {

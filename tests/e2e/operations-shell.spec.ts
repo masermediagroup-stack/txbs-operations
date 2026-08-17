@@ -76,6 +76,11 @@ test("Inventory project search filters instantly and opens a workspace", async (
 
 test("Overview has no serious accessibility violations", async ({ page }) => {
   await page.goto("/");
+  const reportsCard = page.getByRole("link", {
+    name: /Reports Operational reporting and performance views\. Active/,
+  });
+  await expect(reportsCard).toBeVisible();
+
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();

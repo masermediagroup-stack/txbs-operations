@@ -10,20 +10,18 @@ import { createClient } from "@/lib/supabase/server"
 const schema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().trim().min(1),
-  role: z.enum(["Operator", "Manager", "Administrator"]),
-  siteId: z.string().uuid().or(z.literal("")),
+  role: z.enum(["Operator", "Tech"]),
   active: z.string().optional(),
 })
 
 export async function configureProfileAction(formData: FormData) {
   const operator = await getCurrentOperator()
-  if (!operator || operator.role !== "Administrator") redirect("/administration?error=forbidden")
+  if (!operator || operator.role !== "Operator") redirect("/administration?error=forbidden")
 
   const parsed = schema.safeParse({
     userId: formData.get("userId"),
     displayName: formData.get("displayName"),
     role: formData.get("role"),
-    siteId: formData.get("siteId"),
     active: formData.get("active") ?? undefined,
   })
   if (!parsed.success) redirect("/administration?error=invalid-input")
@@ -33,7 +31,7 @@ export async function configureProfileAction(formData: FormData) {
     p_display_name: parsed.data.displayName,
     p_active: parsed.data.active === "on",
     p_role: parsed.data.role,
-    p_site_id: parsed.data.role === "Administrator" ? null : parsed.data.siteId || null,
+    p_site_id: null,
   })
   if (error) redirect(`/administration?error=${encodeURIComponent(error.message)}`)
   revalidatePath("/administration")

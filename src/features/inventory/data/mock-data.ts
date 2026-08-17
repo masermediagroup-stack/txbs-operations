@@ -9,7 +9,7 @@ import type {
 } from "@/features/inventory/types/inventory";
 
 export const storageLocations: StorageLocation[] = [
-  ...Array.from({ length: 7 }, (_, index) => ({
+  ...Array.from({ length: 8 }, (_, index) => ({
     id: `conex-${index + 1}`,
     slug: `conex-${index + 1}`,
     name: `Conex ${index + 1}`,
@@ -56,11 +56,11 @@ type ProjectSeed = {
   pallets: number;
   boxes: number;
   lastActivity: string;
-  materials?: [string, string];
+  materials?: string[];
 };
 
 const projectSeeds: ProjectSeed[] = [
-  { name: "FW Maudrie Walton", slug: "fw-maudrie-walton", jobNumber: "TBS-24118", status: "Stored", locations: ["conex-1", "south-yard"], pallets: 4, boxes: 12, lastActivity: "2026-08-04T14:20:00-05:00" },
+  { name: "FW Maudrie Walton", slug: "fw-maudrie-walton", jobNumber: "TBS-24118", status: "Stored", locations: ["conex-8"], pallets: 0, boxes: 8, lastActivity: "2026-08-17T09:00:00-05:00", materials: ["Marker Boards"] },
   { name: "Allen ISD", slug: "allen-isd", jobNumber: "TBS-24126", status: "Ready for Delivery", locations: ["conex-4", "south-yard"], pallets: 2, boxes: 5, lastActivity: "2026-08-05T09:12:00-05:00", materials: ["Marker Boards", "Bathroom Accessories"] },
   { name: "Allen Police", slug: "allen-police", jobNumber: "TBS-24131", status: "Received", locations: ["middle-yard", "conex-2"], pallets: 3, boxes: 9, lastActivity: "2026-08-05T08:40:00-05:00", materials: ["Detention Accessories", "Fire Extinguisher Cabinets"] },
   { name: "Pearce ISD", slug: "pearce-isd", jobNumber: "TBS-24097", status: "Stored", locations: ["conex-3"], pallets: 5, boxes: 18, lastActivity: "2026-08-03T15:05:00-05:00", materials: ["Visual Display Boards", "Toilet Partitions"] },
@@ -88,10 +88,10 @@ function materialGroupsFor(seed: ProjectSeed): ProjectMaterialGroup[] {
     id: `${seed.slug}-material-${groupIndex + 1}`,
     projectId: seed.slug,
     name,
-    description: groupIndex === 0 ? "Primary packaged material group" : "Accessory and finish material group",
+    description: seed.slug === "fw-maudrie-walton" ? "12-foot Marker Boards" : groupIndex === 0 ? "Primary packaged material group" : "Accessory and finish material group",
     storageLocationId: seed.locations[groupIndex % seed.locations.length],
-    pallets: groupIndex === 0 ? primaryPallets : Math.max(0, seed.pallets - primaryPallets),
-    boxes: groupIndex === 0 ? primaryBoxes : Math.max(0, seed.boxes - primaryBoxes),
+    pallets: names.length === 1 ? seed.pallets : groupIndex === 0 ? primaryPallets : Math.max(0, seed.pallets - primaryPallets),
+    boxes: names.length === 1 ? seed.boxes : groupIndex === 0 ? primaryBoxes : Math.max(0, seed.boxes - primaryBoxes),
   }));
 }
 

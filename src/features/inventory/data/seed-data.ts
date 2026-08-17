@@ -7,15 +7,22 @@ function seedId(value: number) {
   return `00000000-0000-4000-8000-${String(value).padStart(12, "0")}`
 }
 
-const locationIds = new Map(legacyLocations.map((location, index) => [location.id, seedId(100 + index)]))
+const legacyLocationNumbers = new Map<string, number>([
+  ...Array.from({ length: 7 }, (_, index) => [`conex-${index + 1}`, 100 + index] as const),
+  ["north-yard", 107] as const,
+  ["middle-yard", 108] as const,
+  ["south-yard", 109] as const,
+  ["conex-8", 110] as const,
+])
+const locationIds = new Map(legacyLocations.map((location) => [location.id, seedId(legacyLocationNumbers.get(location.id)!)]))
 const projectIds = new Map(inventoryProjects.map((project, index) => [project.id, seedId(1_000 + index)]))
 
 export const inventorySeed: InventorySnapshot = {
   schemaVersion: INVENTORY_SCHEMA_VERSION,
   revision: 0,
   sites: [{ id: LAVON_SITE_ID, slug: "lavon-yard", name: "Lavon Yard", active: true }],
-  locations: legacyLocations.map((location, index) => ({
-    id: seedId(100 + index),
+  locations: legacyLocations.map((location) => ({
+    id: locationIds.get(location.id)!,
     siteId: LAVON_SITE_ID,
     slug: location.slug,
     name: location.name,
@@ -55,7 +62,7 @@ export const inventorySeed: InventorySnapshot = {
         siteId: LAVON_SITE_ID,
         locationId: locationIds.get(group.storageLocationId) ?? null,
         position: unknownPosition(),
-        packageType: "Mixed" as const,
+        packageType: project.slug === "fw-maudrie-walton" ? "Loose" as const : "Mixed" as const,
         quantity,
         presence: "Present" as const,
         condition: "Needs inspection" as const,
@@ -67,7 +74,9 @@ export const inventorySeed: InventorySnapshot = {
         createdAt: project.activity.at(-1)?.occurredAt ?? project.lastActivity,
         updatedAt: project.lastActivity,
         version: 1,
-        migrationNote: `Migrated from ${group.pallets} pallet${group.pallets === 1 ? "" : "s"} and ${group.boxes} box${group.boxes === 1 ? "" : "es"}; exact package breakdown remains in this note until field verification.`,
+        migrationNote: project.slug === "fw-maudrie-walton"
+          ? "Confirmed inventory update: quantity 8, 12-foot Marker Boards, stored in Conex 8; exact position remains unverified."
+          : `Migrated from ${group.pallets} pallet${group.pallets === 1 ? "" : "s"} and ${group.boxes} box${group.boxes === 1 ? "" : "es"}; exact package breakdown remains in this note until field verification.`,
       }
     }),
   ),

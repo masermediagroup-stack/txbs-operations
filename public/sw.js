@@ -1,4 +1,4 @@
-const VERSION = "tbs-yard-v1"
+const VERSION = "tbs-yard-v2"
 const SHELL_CACHE = `${VERSION}-shell`
 const ASSET_CACHE = `${VERSION}-assets`
 const OFFLINE_URL = "/offline"
@@ -34,8 +34,24 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  const isStaticAsset = url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/images/") || url.pathname === "/icon.svg"
+  const isNextStaticAsset = url.pathname.startsWith("/_next/static/")
+  const isStaticAsset = isNextStaticAsset || url.pathname.startsWith("/images/") || url.pathname === "/icon.svg"
   if (!isStaticAsset) return
+
+  if (isNextStaticAsset) {
+    event.respondWith(
+      caches.open(ASSET_CACHE).then(async (cache) => {
+        try {
+          const response = await fetch(request)
+          if (response.ok) await cache.put(request, response.clone())
+          return response
+        } catch {
+          return (await cache.match(request)) || Response.error()
+        }
+      }),
+    )
+    return
+  }
 
   event.respondWith(
     caches.open(ASSET_CACHE).then(async (cache) => {
@@ -56,4 +72,3 @@ self.addEventListener("sync", (event) => {
     }),
   )
 })
-

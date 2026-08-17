@@ -12,13 +12,32 @@ test("reports provide filters, worklists, drill-through, and CSV at the current 
   await expect(page.getByText("Material age and exposure")).toBeVisible();
   await expect(page.getByRole("button", { name: /Export \d+ rows/ })).toBeEnabled();
 
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    for (const category of ["Age & exposure", "Verification", "Storage", "Readiness", "Activity"]) {
+      await page.getByRole("tab", { name: category }).click();
+      const table = page.getByRole("table");
+      await expect(table).toBeVisible();
+      expect(await table.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    }
+    await page.getByRole("tab", { name: "Age & exposure" }).click();
+  }
+
   await page.getByRole("searchbox", { name: "Search" }).fill("no-report-record-will-match");
   await expect(page.getByText("No material age records match")).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
 
   await page.getByRole("tab", { name: "Storage" }).click();
   await expect(page.getByText("Storage contents")).toBeVisible();
-  await expect(page.locator('a[href="/inventory/storage/conex-1"]:visible')).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    const conexRow = page.getByRole("row", { name: /Conex 1/ });
+    const rowBox = await conexRow.boundingBox();
+    expect(rowBox).not.toBeNull();
+    await conexRow.click({ position: { x: (rowBox?.width ?? 1) - 24, y: (rowBox?.height ?? 1) / 2 } });
+  } else {
+    await page.locator('a[href="/inventory/storage/conex-1"]:visible').click();
+  }
+  await expect(page).toHaveURL(/\/inventory\/storage\/conex-1$/);
+  await page.goBack();
 
   await page.getByRole("tab", { name: "Activity" }).click();
   await expect(page.getByText("Operational activity")).toBeVisible();

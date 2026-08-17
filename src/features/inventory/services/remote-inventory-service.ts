@@ -280,10 +280,10 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
       return refresh()
     },
     async exportBackup() {
-      throw new Error("Shared backup export is available to Administrators from the migration tools.")
+      throw new Error("Shared backup export is available to Operators from the migration tools.")
     },
     async importBackup() {
-      throw new Error("Shared backup import is restricted to the Administrator migration workflow.")
+      throw new Error("Shared backup import is restricted to the Operator migration workflow.")
     },
   }
 }

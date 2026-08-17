@@ -14,6 +14,9 @@ export async function GET() {
   if (!operator.active) {
     return NextResponse.json({ error: "This account is not active." }, { status: 403 })
   }
+  if (operator.role !== "Operator") {
+    return NextResponse.json({ error: "Operator access is required." }, { status: 403 })
+  }
 
   try {
     const snapshot = await loadSupabaseInventorySnapshot(await createClient())

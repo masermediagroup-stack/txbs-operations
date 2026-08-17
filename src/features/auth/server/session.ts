@@ -9,7 +9,7 @@ export type CurrentOperator = {
   id: string
   email: string
   displayName: string
-  role: "Operator" | "Manager" | "Administrator"
+  role: "Operator" | "Tech"
   active: boolean
 }
 
@@ -36,4 +36,3 @@ export const getCurrentOperator = cache(async (): Promise<CurrentOperator | null
     active: profile.active,
   } as CurrentOperator
 })
-

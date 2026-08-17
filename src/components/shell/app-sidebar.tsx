@@ -17,6 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import type { CurrentOperator } from "@/features/auth/server/session";
 import {
   Sidebar,
   SidebarContent,
@@ -66,7 +67,7 @@ function BrandMark({
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({ operator }: { operator: CurrentOperator | null }) {
   const pathname = usePathname();
   const [inventoryOpen, setInventoryOpen] = useState(() =>
     pathname.startsWith("/inventory"),
@@ -105,7 +106,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {primaryNavigation.map((item) => {
+              {primaryNavigation.filter((item) => operator?.role !== "Tech" || item.href === "/").map((item) => {
                 const Icon = item.icon;
                 const active = isRouteActive(pathname, item.href);
 
@@ -190,7 +191,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {systemNavigation.map((item) => {
+              {systemNavigation.filter((item) => operator?.role !== "Tech" || item.href === "/settings").map((item) => {
                 const Icon = item.icon;
 
                 return (
@@ -223,9 +224,9 @@ export function AppSidebar() {
             className="size-4 shrink-0 text-brand-orange"
           />
           <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <span className="block truncate text-xs font-medium">Lavon Yard</span>
+            <span className="block truncate text-xs font-medium">{operator?.role === "Tech" ? "Field workspace" : "Lavon Yard"}</span>
             <span className="block truncate text-[11px] text-muted-foreground">
-              Operations workspace
+              {operator?.role === "Tech" ? "Tech account" : "Operations workspace"}
             </span>
           </span>
         </div>

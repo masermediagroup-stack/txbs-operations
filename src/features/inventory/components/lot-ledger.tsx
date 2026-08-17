@@ -37,7 +37,7 @@ export function LotLedger({ lots, snapshot }: { lots: MaterialLot[]; snapshot: I
           <div><h3 className="font-semibold">{group?.name ?? "Material lot"}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{group?.description}</p></div>
           <div><p className="font-mono text-lg font-semibold tabular-nums">{lot.quantity ?? "Unknown"}</p><p className="text-xs text-muted-foreground">{lot.packageType}{lot.quantity === 1 ? "" : " packages"}</p></div>
           <div className="flex flex-col gap-2"><LotFacts lot={lot} snapshot={snapshot} /></div>
-          <div className="flex flex-col gap-2"><VerifyLotSheet lot={lot} /><Button render={<Link href={`/inventory/movements?lot=${lot.id}`} />} variant="outline"><MoveRight aria-hidden="true" data-icon="inline-start" />Move material</Button><RecordIssueSheet projectId={lot.projectId} lotId={lot.id} /></div>
+          <div className="flex flex-col gap-2"><VerifyLotSheet lot={lot} /><Button nativeButton={false} render={<Link href={`/inventory/movements?lot=${lot.id}`} />} variant="outline"><MoveRight aria-hidden="true" data-icon="inline-start" />Move material</Button><RecordIssueSheet projectId={lot.projectId} lotId={lot.id} /></div>
         </div>
         {lot.handlingRequirements.length ? <Alert className="rounded-none border-x-0 border-b-0"><AlertTriangle aria-hidden="true" /><AlertTitle>Handling requirements</AlertTitle><AlertDescription>{lot.handlingRequirements.join(" · ")}</AlertDescription></Alert> : null}
         {lot.migrationNote ? <p className="border-t bg-muted/35 px-4 py-2 text-xs text-muted-foreground">{lot.migrationNote}</p> : null}

@@ -11,9 +11,9 @@ import { MobileSyncProvider } from "@/features/mobile/components/mobile-sync-pro
 
 export function OperationsShell({ children, operator }: { children: ReactNode; operator: CurrentOperator | null }) {
   return (
-    <MobileSyncProvider operator={operator}>
+    <MobileSyncProvider operator={operator?.role === "Operator" ? operator : null}>
       <SidebarProvider>
-        <AppSidebar />
+        <AppSidebar operator={operator} />
         <SidebarInset id="main-content" tabIndex={-1}>
           <TopNavigation operator={operator} />
           <div className="flex min-w-0 flex-1 flex-col px-3 py-4 sm:px-4 lg:px-5 lg:py-5">

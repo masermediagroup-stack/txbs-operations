@@ -32,7 +32,7 @@ export type QueuedActor = {
   userId: string | null
   email: string | null
   displayName: string
-  role: "Operator" | "Manager" | "Administrator" | null
+  role: "Operator" | "Tech" | null
 }
 
 export type QueuedMutation = {
@@ -90,7 +90,7 @@ const actorSchema: z.ZodType<QueuedActor> = z.object({
   userId: z.string().uuid().nullable(),
   email: z.string().email().nullable(),
   displayName: z.string().trim().min(1),
-  role: z.enum(["Operator", "Manager", "Administrator"]).nullable(),
+  role: z.enum(["Operator", "Tech"]).nullable(),
 })
 
 export const queuedMutationSchema: z.ZodType<QueuedMutation> = z.object({
@@ -141,4 +141,3 @@ export type JournalExport = {
   conflicts: SyncConflict[]
   manifest: MobileCacheManifest | null
 }
-

@@ -2,7 +2,7 @@ import { migrateInventorySnapshot, type InventorySnapshot } from "@/features/inv
 import { StaleInventoryError, type InventoryPersistence, type PhotoBlob } from "@/features/inventory/repositories/inventory-persistence"
 
 const DATABASE_NAME = "tbs-operations-inventory"
-const DATABASE_VERSION = 5
+const DATABASE_VERSION = 6
 const SNAPSHOT_STORE = "snapshot"
 const PHOTO_STORE = "photos"
 const SNAPSHOT_KEY = "current"

@@ -19,6 +19,7 @@ describe("material types", () => {
     const markerBoards = getMaterialType("marker-boards");
 
     expect(markerBoards?.projects.map((project) => project.projectName)).toEqual([
+      "FW Maudrie Walton",
       "Allen ISD",
       "Douglas ISD",
       "Chisum ISD",

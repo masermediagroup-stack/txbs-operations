@@ -77,8 +77,8 @@ export function TopNavigation({ operator }: { operator: CurrentOperator | null }
       </nav>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <GlobalInventorySearch />
-        <SyncStatusControl />
+        {operator?.role !== "Tech" ? <GlobalInventorySearch /> : null}
+        {operator?.role !== "Tech" ? <SyncStatusControl /> : null}
 
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -146,7 +146,7 @@ export function TopNavigation({ operator }: { operator: CurrentOperator | null }
               <>
                 <DropdownMenuSeparator />
                 <form action={logoutAction}>
-                  <DropdownMenuItem render={<button type="submit" className="w-full" />}>
+                  <DropdownMenuItem nativeButton render={<button type="submit" className="w-full" />}>
                     <LogOut aria-hidden="true" />
                     Sign out
                   </DropdownMenuItem>

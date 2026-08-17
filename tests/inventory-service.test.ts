@@ -15,16 +15,20 @@ describe("yard domain foundation", () => {
     legacy.lots = (legacy.lots as Array<Record<string, unknown>>).map((lot) => { const copy = { ...lot }; delete copy.rootLotId; return copy })
     legacy.photos = (legacy.photos as Array<Record<string, unknown>>).map((photo) => { const copy = { ...photo }; delete copy.movementId; return copy })
     const migrated = migrateInventorySnapshot(legacy)
-    expect(migrated.schemaVersion).toBe(5)
+    expect(migrated.schemaVersion).toBe(6)
     expect(migrated.lots.every((lot) => lot.rootLotId === lot.id)).toBe(true)
     expect(migrated.movements).toEqual([])
   })
 
   it("migrates every legacy group into one normalized material lot", () => {
     expect(inventorySeed.lots).toHaveLength(inventorySeed.groups.length)
-    expect(inventorySeed.lots.every((lot) => lot.packageType === "Mixed")).toBe(true)
+    expect(inventorySeed.lots.filter((lot) => lot.projectId !== inventorySeed.projects[0].id).every((lot) => lot.packageType === "Mixed")).toBe(true)
     expect(inventorySeed.lots.every((lot) => lot.position.precision === "Unknown")).toBe(true)
-    expect(new Set(inventorySeed.locations.filter((location) => location.type === "Conex").map((location) => location.name))).toEqual(new Set(["Conex 1", "Conex 2", "Conex 3", "Conex 4", "Conex 5", "Conex 6", "Conex 7"]))
+    expect(new Set(inventorySeed.locations.filter((location) => location.type === "Conex").map((location) => location.name))).toEqual(new Set(["Conex 1", "Conex 2", "Conex 3", "Conex 4", "Conex 5", "Conex 6", "Conex 7", "Conex 8"]))
+    const fwMaudrie = inventorySeed.projects.find((project) => project.slug === "fw-maudrie-walton")!
+    const markerBoards = inventorySeed.groups.find((group) => group.projectId === fwMaudrie.id)!
+    expect(markerBoards).toMatchObject({ name: "Marker Boards", description: "12-foot Marker Boards" })
+    expect(inventorySeed.lots.find((lot) => lot.groupId === markerBoards.id)).toMatchObject({ packageType: "Loose", quantity: 8, locationId: inventorySeed.locations.find((location) => location.slug === "conex-8")?.id })
   })
 
   it("adds and verifies a lot while deriving totals from lots", async () => {
@@ -101,7 +105,7 @@ describe("project readiness and outbound", () => {
       return copy
     })
     const migrated = migrateInventorySnapshot(legacy)
-    expect(migrated.schemaVersion).toBe(5)
+    expect(migrated.schemaVersion).toBe(6)
     expect(migrated.outboundBatches).toEqual([])
     expect(migrated.outboundLines).toEqual([])
   })
@@ -337,7 +341,7 @@ describe("issues and material condition", () => {
 
     const migrated = migrateInventorySnapshot(legacy)
     const issue = migrated.issues[0]
-    expect(migrated.schemaVersion).toBe(5)
+    expect(migrated.schemaVersion).toBe(6)
     expect(issue).toMatchObject({ locationId: null, movementId: null, outboundBatchId: null, photoIds: [], resolutionNote: null })
     expect(issueEvidenceState(migrated, issue)).toBe("Needs evidence")
     expect(migrated.issueTransitions).toEqual([expect.objectContaining({ issueId: issue.id, kind: "Created", toStatus: "Open", operatorName: "Legacy Operator" })])
