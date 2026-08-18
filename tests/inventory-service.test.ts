@@ -16,19 +16,31 @@ describe("yard domain foundation", () => {
     legacy.photos = (legacy.photos as Array<Record<string, unknown>>).map((photo) => { const copy = { ...photo }; delete copy.movementId; return copy })
     const migrated = migrateInventorySnapshot(legacy)
     expect(migrated.schemaVersion).toBe(6)
-    expect(migrated.lots.every((lot) => lot.rootLotId === lot.id)).toBe(true)
+    expect(migrated.lots.every((lot) => migrated.lots.some((root) => root.id === lot.rootLotId))).toBe(true)
     expect(migrated.movements).toEqual([])
   })
 
-  it("migrates every legacy group into one normalized material lot", () => {
-    expect(inventorySeed.lots).toHaveLength(inventorySeed.groups.length)
-    expect(inventorySeed.lots.filter((lot) => lot.projectId !== inventorySeed.projects[0].id).every((lot) => lot.packageType === "Mixed")).toBe(true)
+  it("migrates every legacy group into normalized lots while preserving split lineage", () => {
+    expect(inventorySeed.groups.every((group) => inventorySeed.lots.some((lot) => lot.groupId === group.id))).toBe(true)
+    const normalizedLegacyProjectIds = new Set(inventorySeed.projects.filter((project) => project.slug !== "fw-maudrie-walton").map((project) => project.id))
+    expect(inventorySeed.lots.filter((lot) => normalizedLegacyProjectIds.has(lot.projectId)).every((lot) => lot.packageType === "Mixed")).toBe(true)
     expect(inventorySeed.lots.every((lot) => lot.position.precision === "Unknown")).toBe(true)
     expect(new Set(inventorySeed.locations.filter((location) => location.type === "Conex").map((location) => location.name))).toEqual(new Set(["Conex 1", "Conex 2", "Conex 3", "Conex 4", "Conex 5", "Conex 6", "Conex 7", "Conex 8"]))
     const fwMaudrie = inventorySeed.projects.find((project) => project.slug === "fw-maudrie-walton")!
     const markerBoards = inventorySeed.groups.find((group) => group.projectId === fwMaudrie.id)!
     expect(markerBoards).toMatchObject({ name: "Marker Boards", description: "12-foot Marker Boards" })
     expect(inventorySeed.lots.find((lot) => lot.groupId === markerBoards.id)).toMatchObject({ packageType: "Loose", quantity: 8, locationId: inventorySeed.locations.find((location) => location.slug === "conex-8")?.id })
+  })
+
+  it("keeps Lavon and Richardson as distinct active inventory sites", () => {
+    const richardson = inventorySeed.sites.find((site) => site.slug === "richardson-office-warehouse")!
+    const lots = inventorySeed.lots.filter((lot) => lot.siteId === richardson.id)
+    const projectNames = new Set(lots.map((lot) => inventorySeed.projects.find((project) => project.id === lot.projectId)?.name))
+    expect(inventorySeed.sites.filter((site) => site.active)).toHaveLength(2)
+    expect(inventorySeed.projects.some((project) => project.slug === "richardson-warehouse-test-project")).toBe(false)
+    expect(projectNames).toEqual(new Set(["Ramer", "Plano West"]))
+    expect(lots).toHaveLength(4)
+    expect(lots.every((lot) => lot.protection === "Indoor" && lot.parentLotId !== null)).toBe(true)
   })
 
   it("adds and verifies a lot while deriving totals from lots", async () => {

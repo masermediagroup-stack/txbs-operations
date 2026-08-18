@@ -19,7 +19,7 @@ This directory is the implementation-planning source for the next TBS Operations
 | 3 | [Material Movement](phase-03-material-movement/v1.md) | [Implemented](phase-03-material-movement/implementation-report-v1.md) | Phase 2 |
 | 4 | [Project Readiness and Outbound](phase-04-project-readiness-outbound/v1.md) | [Implemented](phase-04-project-readiness-outbound/implementation-report-v1.md) | Phase 3 |
 | 5 | [Issues and Material Condition](phase-05-issues-material-condition/v2.md) | Implemented | Phase 4 |
-| 6 | [Supabase and Authentication](phase-06-supabase-authentication/v1.md) ([Operator/Tech v2](phase-06-supabase-authentication/implementation-plan-v2.md), [temporary validation plan](phase-06-supabase-authentication/temporary-validation-plan-v1.md), [implementation plan v1](phase-06-supabase-authentication/implementation-plan-v1.md)) | [Shared demo deployed; Operator/Tech model active](phase-06-supabase-authentication/implementation-report-v1.md) | Phase 5 |
+| 6 | [Supabase and Authentication](phase-06-supabase-authentication/v1.md) ([Operator/Tech access v3](phase-06-supabase-authentication/implementation-plan-v3.md), [v2 history](phase-06-supabase-authentication/implementation-plan-v2.md), [temporary validation plan](phase-06-supabase-authentication/temporary-validation-plan-v1.md)) | [Shared demo deployed; Operator/Tech model active](phase-06-supabase-authentication/implementation-report-v1.md) | Phase 5 |
 | 7 | [Mobile Yard Companion](phase-07-mobile-yard-companion/v1.md) ([implementation plan](phase-07-mobile-yard-companion/implementation-plan-v1.md)) | [Implemented; shared replay activated by Phase 6](phase-07-mobile-yard-companion/implementation-report-v1.md) | Phase 6 |
 | 8 | [QR Labels](phase-08-qr-labels/v1.md) | Gated | Confirmed warehouse and labeling hardware |
 | 9 | [Yard Map](phase-09-yard-map/v1.md) | Planned with entry gate | Phase 7 and a confirmed site diagram |
@@ -58,13 +58,14 @@ The report for every phase must include:
 ## Locked roadmap decisions
 
 - Lavon Yard currently models eight numbered Conex containers.
-- The planned warehouse is an additional site; it does not erase Lavon history.
+- Lavon Yard and Richardson Office & Warehouse are distinct current Sites. Any future larger warehouse is additional and does not erase either Site's history.
 - Material becomes `Needs Verification` after 14 days without confirmation.
 - Pre-authentication mutations require an operator name every time.
 - Every Damaged Issue requires at least one linked damage photo. Other Issue types keep optional photo evidence unless their originating workflow already requires it.
 - Receiving requires 1–3 material photos per receipt line. Movement photos remain optional and allow no more than 3 per movement.
 - Local structured records and photos must be preserved and migrated into Supabase.
-- Phase 6 exposes two account types: Operator and Tech. Operators have administrative control; Tech access is limited to future assigned field-work workflows.
+- Phase 6 exposes two account types without implying an organizational hierarchy. Operator is broad trusted-business access for office, leadership, material management, yard, or warehouse users. Tech receives read-only inventory and Outbound context plus focused delivery/pickup/installation workflows as they launch.
+- TBS Material Name is the team's operational/common name. Supplier wording is supporting reference data and must not overwrite the name used in day-to-day work.
 - The temporary Phase 6 validation site may use administratively created Supabase password accounts with public signup disabled. This exception does not satisfy the final Microsoft Entra acceptance gate.
 - Existing legacy Manager and Administrator profile records migrate to Operator. Legacy enum labels remain only as an internal database-compatibility detail for immutable v1 migrations.
 - Phase 6 will first validate the production architecture in a visibly labeled, disposable Supabase/Vercel environment. Temporary infrastructure may not weaken Auth, RLS, media privacy, or audit requirements.

@@ -79,6 +79,7 @@ export function ReceivingWorkspace() {
   const { snapshot, saveReceiptDraft, completeReceipt } = useInventory();
   const { isOnline } = useMobileSync();
   const [receiptId, setReceiptId] = useState<string | undefined>();
+  const [siteId, setSiteId] = useState(snapshot.sites[0]?.id ?? "");
   const [receiptNumber, setReceiptNumber] = useState("");
   const [projectId, setProjectId] = useState("");
   const [inspectionState, setInspectionState] = useState<
@@ -106,6 +107,7 @@ export function ReceivingWorkspace() {
       receipt.receiptNumber &&
       receipt.receiptNumber.toLowerCase() ===
         receiptNumber.trim().toLowerCase() &&
+      receipt.siteId === siteId &&
       receipt.id !== receiptId,
   );
   const drafts = snapshot.receipts
@@ -138,6 +140,7 @@ export function ReceivingWorkspace() {
       (line) => line.receiptId === id,
     );
     setReceiptId(id);
+    setSiteId(receipt.siteId);
     setReceiptNumber(receipt.receiptNumber);
     setProjectId(receipt.projectId ?? "");
     setInspectionState(receipt.inspectionState);
@@ -215,7 +218,7 @@ export function ReceivingWorkspace() {
         );
       const saved = await saveReceiptDraft({
         receiptId,
-        siteId: snapshot.sites[0].id,
+        siteId,
         receiptNumber,
         projectId: projectId || null,
         inspectionState,
@@ -304,6 +307,23 @@ export function ReceivingWorkspace() {
             </CardHeader>
             <CardContent>
               <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="receivingSite">Receiving site</FieldLabel>
+                  <NativeSelect
+                    className="w-full"
+                    id="receivingSite"
+                    value={siteId}
+                    onChange={(event) => {
+                      setSiteId(event.target.value);
+                      setProjectId("");
+                      setStagingLocationId("");
+                      setLines((current) => current.map((line) => ({ ...line, targetLocationId: null })));
+                    }}
+                  >
+                    {snapshot.sites.filter((site) => site.active).map((site) => <NativeSelectOption key={site.id} value={site.id}>{site.name}</NativeSelectOption>)}
+                  </NativeSelect>
+                  <FieldDescription>Projects and storage choices remain inside the selected site.</FieldDescription>
+                </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field>
                     <FieldLabel htmlFor="receiptNumber">
@@ -543,7 +563,7 @@ export function ReceivingWorkspace() {
                         <NativeSelectOption value="">
                           Use receipt staging / unknown
                         </NativeSelectOption>
-                        {snapshot.locations.map((location) => (
+                        {snapshot.locations.filter((location) => location.siteId === siteId).map((location) => (
                           <NativeSelectOption
                             key={location.id}
                             value={location.id}
@@ -724,7 +744,7 @@ export function ReceivingWorkspace() {
                       <NativeSelectOption value="">
                         Unknown / not assigned
                       </NativeSelectOption>
-                      {snapshot.locations.map((location) => (
+                      {snapshot.locations.filter((location) => location.siteId === siteId).map((location) => (
                         <NativeSelectOption
                           key={location.id}
                           value={location.id}

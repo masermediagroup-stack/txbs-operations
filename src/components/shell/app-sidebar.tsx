@@ -8,6 +8,7 @@ import { ChevronRight, MapPin } from "lucide-react";
 
 import {
   primaryNavigation,
+  techNavigation,
   systemNavigation,
   isRouteActive,
 } from "@/config/navigation";
@@ -78,6 +79,7 @@ export function AppSidebar({ operator }: { operator: CurrentOperator | null }) {
       setOpenMobile(false);
     }
   };
+  const visiblePrimaryNavigation = operator?.role === "Tech" ? techNavigation : primaryNavigation;
 
   return (
     <Sidebar collapsible="icon">
@@ -106,7 +108,7 @@ export function AppSidebar({ operator }: { operator: CurrentOperator | null }) {
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {primaryNavigation.filter((item) => operator?.role !== "Tech" || item.href === "/").map((item) => {
+              {visiblePrimaryNavigation.map((item) => {
                 const Icon = item.icon;
                 const active = isRouteActive(pathname, item.href);
 
@@ -224,9 +226,9 @@ export function AppSidebar({ operator }: { operator: CurrentOperator | null }) {
             className="size-4 shrink-0 text-brand-orange"
           />
           <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <span className="block truncate text-xs font-medium">{operator?.role === "Tech" ? "Field workspace" : "Lavon Yard"}</span>
+            <span className="block truncate text-xs font-medium">{operator?.role === "Tech" ? "Field workspace" : "TBS Operations"}</span>
             <span className="block truncate text-[11px] text-muted-foreground">
-              {operator?.role === "Tech" ? "Tech account" : "Operations workspace"}
+              {operator?.role === "Tech" ? "Inventory · outbound · install" : "Lavon · Richardson"}
             </span>
           </span>
         </div>

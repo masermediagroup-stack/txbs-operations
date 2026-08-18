@@ -14,13 +14,25 @@ export async function GET() {
   if (!operator.active) {
     return NextResponse.json({ error: "This account is not active." }, { status: 403 })
   }
-  if (operator.role !== "Operator") {
-    return NextResponse.json({ error: "Operator access is required." }, { status: 403 })
-  }
-
   try {
     const snapshot = await loadSupabaseInventorySnapshot(await createClient())
-    return NextResponse.json(snapshot, {
+    const response = operator.role === "Tech"
+      ? {
+          ...snapshot,
+          aliases: [],
+          photos: [],
+          verifications: [],
+          activities: [],
+          issues: [],
+          issueComments: [],
+          issueTransitions: [],
+          receipts: [],
+          receiptLines: [],
+          movements: [],
+          movementLines: [],
+        }
+      : snapshot
+    return NextResponse.json(response, {
       headers: { "Cache-Control": "private, no-store" },
     })
   } catch (error) {

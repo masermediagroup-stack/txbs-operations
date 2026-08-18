@@ -4,13 +4,13 @@ This glossary records the operational language used by the application. It defin
 
 ## Business setting
 
-Texas Building Specialties currently operates a yard in Lavon, Texas. Lavon contains eight numbered Conex containers plus the confirmed North Yard, Middle Yard, and South Yard storage areas. A planned warehouse is an additional site; it does not replace Lavon.
+Texas Building Specialties currently operates two inventory Sites. Lavon Yard contains eight numbered Conex containers plus the confirmed North Yard, Middle Yard, and South Yard storage areas. Richardson Office & Warehouse is the main office with a small indoor material-storage area. Any future warehouse is an additional Site; it does not replace either current Site.
 
 ## Core terms
 
 ### Site
 
-A distinct TBS operating place that owns its locations and operational records. Lavon Yard is the current Site.
+A distinct TBS operating place that owns its locations and operational records. Lavon Yard and Richardson Office & Warehouse are current Sites.
 
 ### Storage Location
 
@@ -22,7 +22,7 @@ The precision within a Storage Location. A position is Exact, General, or Unknow
 
 ### Inventory Project
 
-The Inventory record for one job. Its official name, aliases, field-label text, job number, and purchase orders can identify it. Project status describes the job’s operational stage and is separate from material presence or readiness.
+The Inventory record for one job. Its official name, aliases, field-label text, job number, and purchase orders can identify it. Material for one Inventory Project may be distributed across multiple Sites and remains one project rather than being duplicated per Site. Project status describes the job’s operational stage and is separate from material presence or readiness.
 
 ### Project Alias
 
@@ -34,7 +34,23 @@ Handwritten or locally applied project wording found on physical material. Field
 
 ### Material Group
 
-A project-specific description that organizes related physical Material Lots. It does not own package totals.
+A project-specific description that organizes related physical Material Lots. Its name is the TBS operational/common name used by the team; supplier wording may be retained separately in its description or a future supplier-description field. It does not own package totals.
+
+### TBS Material Name
+
+The common operational name TBS uses to identify material in conversation, search, receiving, storage, and field work. It may differ from a supplier's catalog or invoice description and must not be overwritten merely to match supplier wording.
+
+### Supplier Material Description
+
+The supplier-provided name, catalog wording, or line description for material. It is supporting reference data and does not replace the TBS Material Name.
+
+### Operator Account
+
+A broadly trusted business account for people who need the complete operational picture. An Operator may work in the office, leadership, material management, a yard, or a warehouse. Operator is an access scope, not a job title, physical-work location, or rank.
+
+### Tech Account
+
+A focused field-work account. A Tech can view the inventory and outbound context needed to understand material headed to project sites and, as field modules launch, confirm installation and report field exceptions. Tech access excludes Procurement, costs, account administration, configuration, and operational changes outside the Tech workflow.
 
 ### Material Lot
 

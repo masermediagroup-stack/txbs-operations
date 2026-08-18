@@ -5,6 +5,7 @@ import {
   isRouteActive,
   primaryNavigation,
   systemNavigation,
+  techNavigation,
   inventoryRoutes,
 } from "../src/config/navigation";
 
@@ -32,6 +33,13 @@ describe("navigation configuration", () => {
     expect(inventory?.children?.map((route) => route.label)).toEqual(
       ["Dashboard", "Receiving", "Movements", "Outbound", "Projects", "Materials", "Storage", "Activity", "Issues"],
     );
+  });
+
+  it("gives Tech accounts one focused field-work entry point", () => {
+    expect(techNavigation.map((route) => [route.label, route.href])).toEqual([
+      ["Overview", "/"],
+      ["My Work", "/my-work"],
+    ]);
   });
 
   it("builds Inventory breadcrumbs for nested routes", () => {

@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   ArrowRightLeft,
   PackageCheck,
+  HardHat,
 } from "lucide-react";
 
 export type RouteDefinition = {
@@ -41,12 +42,17 @@ export const primaryNavigation: RouteDefinition[] = [
   { label: "Reports", href: "/reports", description: "Operational reporting and performance views.", icon: BarChart3 },
 ];
 
+export const techNavigation: RouteDefinition[] = [
+  { label: "Overview", href: "/", description: "Assigned field-work overview.", icon: LayoutDashboard },
+  { label: "My Work", href: "/my-work", description: "Inventory, outbound material, and installation handoffs for field work.", icon: HardHat },
+];
+
 export const systemNavigation: RouteDefinition[] = [
   { label: "Administration", href: "/administration", description: "Organization-wide configuration and governance.", icon: Shield },
   { label: "Settings", href: "/settings", description: "Personal and workspace preferences.", icon: Settings },
 ];
 
-const allRoutes = [...primaryNavigation.flatMap((route) => [route, ...(route.children ?? [])]), ...systemNavigation];
+const allRoutes = [...primaryNavigation.flatMap((route) => [route, ...(route.children ?? [])]), ...techNavigation, ...systemNavigation];
 
 export function isRouteActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
