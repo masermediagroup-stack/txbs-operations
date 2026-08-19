@@ -19,6 +19,8 @@ export const mobileCommandTypes = [
   "outbound.depart",
   "outbound.cancel",
   "outbound.reverse",
+  "field.assignment.start",
+  "field.installation.confirm",
 ] as const
 
 export const queuedMutationStates = ["pending", "syncing", "blocked"] as const

@@ -84,9 +84,9 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
   }, [journal])
 
   const refreshStorage = useCallback(async () => {
-    if (!("storage" in navigator)) return
+    if (!navigator.storage) return
     const [estimate, persisted] = await Promise.all([
-      navigator.storage.estimate(),
+      navigator.storage.estimate?.() ?? Promise.resolve({}),
       navigator.storage.persisted?.() ?? Promise.resolve(null),
     ])
     setStorage({ usage: estimate.usage ?? null, quota: estimate.quota ?? null, persisted })
@@ -126,7 +126,10 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
             return value
           }
           const payload = restorePhotos(mutation.payload) as Record<string, unknown>
-          const response = await fetch("/api/inventory/commands/v1", {
+          const endpoint = mutation.commandType.startsWith("field.")
+            ? "/api/field-work/commands/v1"
+            : "/api/inventory/commands/v1"
+          const response = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ commandId: mutation.clientMutationId, commandType: mutation.commandType, siteId: mutation.siteId, payload }),
@@ -244,7 +247,7 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
   const prepareDevice = useCallback(async () => {
     setSyncError(null)
     try {
-      if (navigator.storage.persist) await navigator.storage.persist()
+      await navigator.storage?.persist?.()
       await journal.prepare({ userId: operator?.id ?? null, ...inventoryCacheRef.current })
       await Promise.all([refresh(), refreshStorage()])
     } catch (cause) {
@@ -326,6 +329,8 @@ export function commandLabel(commandType: MobileCommandType) {
     "outbound.depart": "Record outbound departure",
     "outbound.cancel": "Cancel outbound batch",
     "outbound.reverse": "Reverse outbound departure",
+    "field.assignment.start": "Start assigned work",
+    "field.installation.confirm": "Confirm installation",
   }
   return labels[commandType]
 }

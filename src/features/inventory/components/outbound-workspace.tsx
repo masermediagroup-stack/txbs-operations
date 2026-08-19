@@ -20,6 +20,7 @@ import { RecordIssueSheet } from "@/features/inventory/components/issue-actions"
 import type { InventorySnapshot, MaterialLot, OutboundBatch } from "@/features/inventory/domain/inventory"
 import { describePosition, lotVerificationState, projectLots, projectReadiness, reservedOutboundQuantity } from "@/features/inventory/domain/selectors"
 import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
+import { FieldAssignmentAction } from "@/features/field-work/components/field-assignment-action"
 
 const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" })
 
@@ -131,6 +132,7 @@ function BatchCard({ batch, snapshot }: { batch: OutboundBatch; snapshot: Invent
       {batch.state === "Departed" && (batch.carrierReference || batch.driverReference || batch.note) ? <p className="text-xs text-muted-foreground">{[batch.carrierReference && `Carrier: ${batch.carrierReference}`, batch.driverReference && `Driver: ${batch.driverReference}`, batch.note].filter(Boolean).join(" · ")}</p> : null}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <RecordIssueSheet projectId={batch.projectId} outboundBatchId={batch.id} size="sm" />
+        {batch.state === "Ready" || batch.state === "Departed" ? <FieldAssignmentAction batch={batch} projectName={project?.name ?? "Outbound batch"} /> : null}
         {batch.state === "Planned" ? <BatchActionSheet batch={batch} action="ready" /> : null}
         {batch.state === "Ready" ? <BatchActionSheet batch={batch} action="depart" /> : null}
         {batch.state === "Planned" || batch.state === "Ready" ? <BatchActionSheet batch={batch} action="cancel" /> : null}

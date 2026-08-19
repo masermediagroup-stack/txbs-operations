@@ -25,8 +25,6 @@ export async function POST(request: Request) {
   const operator = await getCurrentOperator()
   if (!operator) return NextResponse.json({ error: "Authentication is required." }, { status: 401 })
   if (!operator.active) return NextResponse.json({ error: "This account is not active." }, { status: 403 })
-  if (operator.role !== "Operator") return NextResponse.json({ error: "Operator access is required." }, { status: 403 })
-
   const form = await request.formData()
   const parsed = metadataSchema.safeParse({
     commandId: form.get("commandId"),

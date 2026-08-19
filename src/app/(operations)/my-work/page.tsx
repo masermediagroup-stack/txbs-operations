@@ -11,7 +11,7 @@ export default async function Page() {
   const operator = await getCurrentOperator()
   return (
     <InventoryProvider seed={inventorySeed} backend={operator ? "supabase" : "local"}>
-      <TechWorkWorkspace />
+      <TechWorkWorkspace authenticated={Boolean(operator)} />
     </InventoryProvider>
   )
 }

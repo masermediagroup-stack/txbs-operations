@@ -1574,6 +1574,19 @@ export type Database = {
         }
         Returns: Json
       }
+      execute_field_work_command_v1: {
+        Args: {
+          p_command_id: string
+          p_command_type: string
+          p_payload: Json
+          p_site_id: string
+        }
+        Returns: Json
+      }
+      get_field_work_snapshot_v1: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "Operator" | "Manager" | "Administrator" | "Tech"
