@@ -6,7 +6,6 @@ import {
   Boxes,
   FolderKanban,
   LayoutDashboard,
-  Settings,
   Shield,
   ClipboardCheck,
   ArrowRightLeft,
@@ -25,7 +24,7 @@ export type RouteDefinition = {
 export type BreadcrumbItem = Pick<RouteDefinition, "href" | "label">;
 
 export const inventoryRoutes: RouteDefinition[] = [
-  { label: "Dashboard", href: "/inventory", description: "Locate active project materials at the Lavon yard.", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/inventory", description: "Locate active project materials across TBS inventory sites.", icon: LayoutDashboard },
   { label: "Receiving", href: "/inventory/receiving", description: "Identify, inspect, label, stage, and receive inbound material.", icon: ClipboardCheck },
   { label: "Movements", href: "/inventory/movements", description: "Move complete or partial material lots with durable source history.", icon: ArrowRightLeft },
   { label: "Outbound", href: "/inventory/outbound", description: "Prepare, confirm, and record project material leaving the yard.", icon: PackageCheck },
@@ -37,7 +36,7 @@ export const inventoryRoutes: RouteDefinition[] = [
 ];
 
 export const primaryNavigation: RouteDefinition[] = [
-  { label: "Overview", href: "/", description: "Operations modules and workspace status.", icon: LayoutDashboard },
+  { label: "Overview", href: "/", description: "Current operational health, attention, and workflow activity.", icon: LayoutDashboard },
   { label: "Inventory", href: "/inventory", description: "Project material visibility and yard operations.", icon: Boxes, children: inventoryRoutes },
   { label: "Reports", href: "/reports", description: "Operational reporting and performance views.", icon: BarChart3 },
 ];
@@ -49,7 +48,6 @@ export const techNavigation: RouteDefinition[] = [
 
 export const systemNavigation: RouteDefinition[] = [
   { label: "Administration", href: "/administration", description: "Organization-wide configuration and governance.", icon: Shield },
-  { label: "Settings", href: "/settings", description: "Personal and workspace preferences.", icon: Settings },
 ];
 
 const allRoutes = [...primaryNavigation.flatMap((route) => [route, ...(route.children ?? [])]), ...techNavigation, ...systemNavigation];

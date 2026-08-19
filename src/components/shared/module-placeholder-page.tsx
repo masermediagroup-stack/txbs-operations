@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { CheckCircle2 } from "lucide-react";
+import { Clock3 } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +33,8 @@ export function ModulePlaceholderPage({
         description={description}
         action={
           <Badge variant="outline" className="gap-1.5 bg-card">
-            <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
-            Foundation ready
+            <Clock3 aria-hidden="true" data-icon="inline-start" />
+            Planned
           </Badge>
         }
       />
@@ -46,11 +46,10 @@ export function ModulePlaceholderPage({
               <EmptyMedia variant="icon">
                 <Icon aria-hidden="true" />
               </EmptyMedia>
-              <EmptyTitle>{title} is ready for its feature phase</EmptyTitle>
+              <EmptyTitle>{title} is planned</EmptyTitle>
               <EmptyDescription>
-                The route, responsive layout, navigation, and module boundary are
-                established. Workflows and operational data will be added in a
-                later phase.
+                This destination is reserved for a later product phase and is not
+                part of the current demonstration workflow.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

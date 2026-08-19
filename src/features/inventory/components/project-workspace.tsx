@@ -6,7 +6,7 @@ import { Camera, ClipboardCheck, MapPin, PackageOpen, ShieldAlert } from "lucide
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { AddMaterialSheet } from "@/features/inventory/components/lot-actions"
 import { RecordIssueSheet } from "@/features/inventory/components/issue-actions"
 import { LotLedger } from "@/features/inventory/components/lot-ledger"
@@ -49,7 +49,7 @@ export function ProjectWorkspace({ slug }: { slug: string }) {
       <CardHeader className="border-b">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div><div className="flex flex-wrap items-center gap-2"><CardTitle className="flex items-center gap-2"><ClipboardCheck aria-hidden="true" />Project readiness</CardTitle><Badge variant={readiness.status === "Ready" ? "secondary" : readiness.status === "Blocked" ? "destructive" : "outline"}>{readiness.status}</Badge></div><CardDescription className="mt-1">Readiness is derived from present lots, 14-day verification, and unresolved blocking issues—not the project status.</CardDescription></div>
-          <Button nativeButton={false} render={<Link href={`/inventory/outbound?project=${project.id}`} />} size="lg"><PackageOpen aria-hidden="true" data-icon="inline-start" />Prepare outbound</Button>
+          <Link href={`/inventory/outbound?project=${project.id}`} className={buttonVariants({ size: "lg" })}><PackageOpen aria-hidden="true" data-icon="inline-start" />Prepare outbound</Link>
         </div>
       </CardHeader>
       <CardContent>{readiness.reasons.length ? <ul className="flex flex-col gap-2">{readiness.reasons.map((reason) => <li key={reason} className="rounded-lg bg-muted/55 px-3 py-2 text-sm">{reason}</li>)}</ul> : <p className="text-sm text-muted-foreground">All present lots are verified and no blocking issue is open.</p>}</CardContent>

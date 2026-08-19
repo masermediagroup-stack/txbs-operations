@@ -11,7 +11,7 @@ export default function AccessPendingPage() {
           <CardDescription>Your account is signed in, but it has not been activated for a TBS site.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-5 text-sm text-muted-foreground">Ask a TBS administrator to activate your profile and assign the Lavon Yard.</p>
+          <p className="mb-5 text-sm text-muted-foreground">Ask a TBS Operator with account access to activate your profile as an Operator or Tech.</p>
           <form action={logoutAction}><Button variant="outline" type="submit">Sign out</Button></form>
         </CardContent>
       </Card>

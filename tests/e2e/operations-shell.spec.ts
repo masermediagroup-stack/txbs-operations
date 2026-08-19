@@ -12,6 +12,8 @@ const routes = [
   "/inventory/materials",
   "/inventory/storage",
   "/inventory/storage/conex-3",
+  "/inventory/storage/richardson-indoor-warehouse",
+  "/inventory/storage/richardson-receiving",
   "/inventory/activity",
   "/inventory/issues",
   "/procurement",
@@ -76,10 +78,8 @@ test("Inventory project search filters instantly and opens a workspace", async (
 
 test("Overview has no serious accessibility violations", async ({ page }) => {
   await page.goto("/");
-  const reportsCard = page.getByRole("link", {
-    name: /Reports Operational reporting and performance views\. Active/,
-  });
-  await expect(reportsCard).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What needs attention today" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Verification due/ }).first()).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

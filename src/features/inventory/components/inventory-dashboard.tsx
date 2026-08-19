@@ -20,7 +20,7 @@ export function InventoryDashboard({ initialQuery = "" }: { initialQuery?: strin
         action={<Badge variant="outline" className="gap-1.5 bg-card"><MapPin aria-hidden="true" data-icon="inline-start" />{activeSites.length} active sites</Badge>}
       />
       <div className="flex items-center justify-between rounded-xl border bg-card px-4 py-3">
-        <p className="text-sm text-muted-foreground">Inventory records and private photos sync through the temporary shared Supabase workspace.</p>
+        <p className="text-sm text-muted-foreground">Demo environment — records and private photos may contain sample or test data and sync securely across signed-in devices.</p>
         <BackupSheet />
       </div>
       <ProjectFinder initialQuery={initialQuery} />

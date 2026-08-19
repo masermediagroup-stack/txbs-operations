@@ -411,7 +411,7 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-card">{role} · assigned sites</Badge>
+              <Badge variant="outline" className="bg-card">{role === "Operator" ? "Operator · all operational access" : "Tech · field access"}</Badge>
               <Badge variant="outline" className="bg-card">Formula {REPORT_FORMULA_VERSION}</Badge>
               {isHydrating ? <Badge>Refreshing shared data</Badge> : null}
             </div>

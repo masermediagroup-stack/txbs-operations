@@ -29,7 +29,7 @@ test("reports provide filters, worklists, drill-through, and CSV at the current 
   await page.getByRole("tab", { name: "Storage" }).click();
   await expect(page.getByText("Storage contents")).toBeVisible();
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
-    const conexRow = page.getByRole("row", { name: /Conex 1/ });
+    const conexRow = page.getByRole("row", { name: /^Conex 1\b/ });
     const rowBox = await conexRow.boundingBox();
     expect(rowBox).not.toBeNull();
     await conexRow.click({ position: { x: (rowBox?.width ?? 1) - 24, y: (rowBox?.height ?? 1) / 2 } });

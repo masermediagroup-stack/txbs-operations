@@ -77,7 +77,7 @@ export default async function LoginPage({
               </Field>
 
               <p className="text-center text-xs leading-relaxed text-muted-foreground">
-                Need account help? Contact your TBS administrator.
+                Need account help? Contact the TBS Operator who manages account access.
               </p>
             </FieldGroup>
           </form>

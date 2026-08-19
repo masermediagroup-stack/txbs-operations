@@ -31,14 +31,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <section className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Administration</h1>
-        <p className="text-muted-foreground">Activate temporary Supabase test accounts and assign their demo permissions.</p>
+        <p className="text-muted-foreground">Activate Operator and Tech demo accounts and manage their access.</p>
       </div>
       {params.saved ? <Alert><AlertTitle>Account updated</AlertTitle><AlertDescription>The account type and access are active in the shared workspace.</AlertDescription></Alert> : null}
       {params.error ? <Alert variant="destructive"><AlertTitle>Account not updated</AlertTitle><AlertDescription>{params.error}</AlertDescription></Alert> : null}
       <Card>
         <CardHeader className="border-b-2 border-b-brand-orange">
-          <CardTitle>Temporary demo accounts</CardTitle>
-          <CardDescription>Create the email/password identity in Supabase Auth first. It appears here inactive, then an Operator activates it as an Operator or Tech account.</CardDescription>
+          <CardTitle>Account access</CardTitle>
+          <CardDescription>Create the email/password identity in the demo authentication system first. It appears here inactive, then an Operator activates it as an Operator or Tech account.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {(profiles ?? []).map((profile) => {
