@@ -1,5 +1,7 @@
 # Phase 5 Implementation Plan v2
 
+> **Historical implementation plan.** Current user-facing access uses Operator and Tech; older managerial wording below records the decision context at implementation time.
+
 - Plan version: v2
 - Source plan: [Phase 5 v2](v2.md)
 - Baseline audited: 2026-08-10

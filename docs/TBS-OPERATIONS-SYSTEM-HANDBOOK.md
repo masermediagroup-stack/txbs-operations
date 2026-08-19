@@ -2,7 +2,7 @@
 
 - Document purpose: Explain what TBS Operations is, how it works today, how a team should operate it, and how the product will expand.
 - Audience: TBS leadership, Operators, Techs, implementation partners, and future maintainers.
-- Current planning baseline: August 18, 2026
+- Current planning baseline: August 19, 2026
 - Source of truth: The current repository and database migrations take priority over older phase documents.
 
 ## 1. Executive summary
@@ -31,6 +31,7 @@ The implemented product currently provides:
 - Offline mobile command queuing and later synchronization.
 - Operational reports, filters, drill-through records, and CSV exports.
 - Account administration using Operator and Tech account types.
+- Operator-assigned field work with Tech installation confirmation, optional evidence, and linked field Issues.
 - Append-only activity and audit records.
 - Responsive desktop tables and mobile cards, sheets, camera/library upload controls, and large touch targets.
 
@@ -59,12 +60,15 @@ Operators should not share credentials. Actions preserve both the authenticated 
 
 A Tech is a focused field-installation account type. Techs normally work at customer/project sites, not at TBS inventory sites. Material is generally delivered to them, although an Operator may occasionally authorize a specific yard pickup. This narrower access is based on workflow need and information sensitivity; it does not represent an organizational hierarchy.
 
-Tech accounts can use the read-only My Work workspace to see:
+Tech accounts use My Work to see and act on only the field context they need:
 
 - Material currently stored across TBS inventory Sites.
 - The project, TBS material name, quantity, Site, and recorded location.
 - Planned, Ready, and Departed Outbound handoffs.
-- The future Installation Confirmation area as that durable workflow launches.
+- Assigned Work linked to Ready or Departed Outbound batches.
+- Installation lines, delivered quantities, handling requirements, due dates, and assignment notes.
+- Installation confirmation with Installed, Partially installed, or Blocked outcomes.
+- Zero to three optional installation photos and linked field Issues; a Damaged Issue requires a photo.
 
 Tech accounts cannot access or perform:
 
@@ -76,7 +80,7 @@ Tech accounts cannot access or perform:
 - Account Administration.
 - Configuration or unrestricted operational changes.
 
-As Project Hub and field assignments launch, Tech views will narrow to assigned project and handoff context while retaining the inventory/outbound information needed to perform that work. A Tech account never grants Receiving, yard-movement, Procurement, cost, or administrative authority.
+Tech inventory search remains global and read-only for pickup and installation context. Assigned Work and installation confirmation are the only operational mutation surfaces available to a Tech. A Tech account never grants Receiving, yard-movement, Procurement, cost, reporting-export, or account authority.
 
 ### Retired role names
 
@@ -255,6 +259,17 @@ The Reports workspace provides operational read models rather than decorative da
 
 Reports support date, Site, project, and report-specific filters. Metrics distinguish unknown values from zero and link back to their underlying records. Operators can export authorized filtered rows to CSV.
 
+### H. Assign and confirm installation work
+
+1. An Operator opens a Ready or Departed Outbound Batch and assigns it to an active Tech account.
+2. The Tech opens My Work and reviews the project, material lines, quantities, handling requirements, due date, and assignment note.
+3. The Tech starts the assignment, enters installed quantities, and selects Installed, Partially installed, or Blocked.
+4. The Tech adds notes and zero to three optional installation photos.
+5. If material is damaged, missing, wrong, or access is blocked, the Tech creates a linked Issue. Damaged Issues require at least one photo.
+6. Submission preserves the Tech identity, UTC timestamp, material-line quantities, Activity/Audit evidence, and assignment version.
+
+Field confirmations can queue offline with photo blobs and replay idempotently. A server-version change pauses the command in the conflict inbox rather than overwriting newer work.
+
 ## 7. Desktop and mobile behavior
 
 The application is one responsive product, not separate desktop and mobile systems.
@@ -282,7 +297,7 @@ Initial supported browser families are current and immediately previous stable C
 
 The mobile companion caches assigned operational reference data in IndexedDB and can queue supported commands when connectivity is unavailable.
 
-Offline-capable command categories include Receiving, Movement, Verification, Issue, and photo metadata workflows as implemented by the command journal.
+Offline-capable command categories include Receiving, Movement, Verification, Issue, field-assignment start, installation confirmation, and their photo metadata as implemented by the command journal.
 
 The synchronization process:
 
@@ -305,6 +320,7 @@ A visible manual Sync action remains available because background synchronizatio
 - Verification: optional photo.
 - Outbound: optional proof photo unless a later policy changes it.
 - Damaged Issue: at least one damage photo is required.
+- Installation confirmation: 0–3 optional photos; a linked Damaged Issue makes at least one photo required.
 - Other Issues and comments: optional photos unless their originating action requires evidence.
 
 Production-like media is stored in a private Supabase Storage bucket. The browser does not receive service-role credentials. Access is authenticated and constrained by application/database authorization.
@@ -373,7 +389,7 @@ Production-like media is stored in a private Supabase Storage bucket. The browse
 - `/inventory/issues` and `/inventory/issues/[id]` — Issue worklists/details.
 - `/reports` — Operational reporting.
 - `/administration` — Operator-only account management.
-- `/settings` — Personal/workspace settings surface.
+- `/my-work` — Tech Assigned Work, read-only Inventory Search, relevant Outbound context, and installation confirmation.
 
 ### Compatibility routes
 
@@ -469,8 +485,8 @@ Major changes create a new phase-plan version. Earlier plans remain as decision 
 - Email/password authentication is for demonstration; Microsoft Entra ID or another company-approved identity solution remains a future production decision.
 - Custom production SMTP/password recovery is not fully established.
 - The live Vercel deployment must always be checked against the intended GitHub commit.
-- Tech My Work now provides read-only inventory and Outbound visibility. Durable installation confirmation and assignment filtering remain planned.
-- Procurement, Purchase Orders, delivery management, Project Hub, and installation tracking are planned, not active.
+- Tech My Work provides assigned installation work, read-only Inventory Search, relevant Outbound context, and durable installation confirmation.
+- Procurement, Purchase Orders, delivery management, and the cross-operational Project Hub are planned, not active.
 - QR Labels remain blocked by hardware and label-stock decisions.
 - Yard Map geometry remains blocked by a confirmed Site diagram.
 - Phase 10 Reporting is implemented but should continue field acceptance and expand with later modules.
@@ -622,7 +638,7 @@ TBS Operations is successful when a team member can answer, with evidence:
 - Is there damage, a discrepancy, or another blocking Issue?
 - Is the project ready for outbound?
 - Who performed each action and when?
-- What work is assigned to each future Tech without exposing unrelated operations?
+- Which project contacts and destination details should be added to assignments without exposing unrelated operations?
 
 The goal is not simply to digitize forms. The goal is a trustworthy operational record that improves material visibility, accountability, handoff quality, and decision-making from the TBS yard to the installation site.
 

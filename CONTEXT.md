@@ -22,7 +22,7 @@ The precision within a Storage Location. A position is Exact, General, or Unknow
 
 ### Inventory Project
 
-The Inventory record for one job. Its official name, aliases, field-label text, job number, and purchase orders can identify it. Material for one Inventory Project may be distributed across multiple Sites and remains one project rather than being duplicated per Site. Project status describes the job’s operational stage and is separate from material presence or readiness.
+The Inventory record for one customer job/project destination. A Project does not represent multiple job sites. Its official name, aliases, field-label text, job number, and purchase orders can identify it. Its Material Lots may be distributed across multiple TBS inventory Sites and remain one Project rather than being duplicated per storage Site. Project status describes the job’s operational stage and is separate from material presence or readiness.
 
 ### Project Alias
 

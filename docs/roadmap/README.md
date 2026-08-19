@@ -19,10 +19,10 @@ This directory is the implementation-planning source for the next TBS Operations
 | 3 | [Material Movement](phase-03-material-movement/v1.md) | [Implemented](phase-03-material-movement/implementation-report-v1.md) | Phase 2 |
 | 4 | [Project Readiness and Outbound](phase-04-project-readiness-outbound/v1.md) | [Implemented](phase-04-project-readiness-outbound/implementation-report-v1.md) | Phase 3 |
 | 5 | [Issues and Material Condition](phase-05-issues-material-condition/v2.md) | Implemented | Phase 4 |
-| 6 | [Supabase and Authentication](phase-06-supabase-authentication/v1.md) ([Operator/Tech access v3](phase-06-supabase-authentication/implementation-plan-v3.md), [v2 history](phase-06-supabase-authentication/implementation-plan-v2.md), [temporary validation plan](phase-06-supabase-authentication/temporary-validation-plan-v1.md)) | [Shared demo deployed; Operator/Tech model active](phase-06-supabase-authentication/implementation-report-v1.md) | Phase 5 |
+| 6 | [Supabase and Authentication](phase-06-supabase-authentication/v1.md) ([current Operator/Tech field plan v4](phase-06-supabase-authentication/implementation-plan-v4.md), [current role closeout](phase-06-supabase-authentication/implementation-report-v2.md), [current demo setup](phase-06-supabase-authentication/demo-setup-guide-v2.md)) | Shared demo deployed; Operator/Tech field model active | Phase 5 |
 | 7 | [Mobile Yard Companion](phase-07-mobile-yard-companion/v1.md) ([implementation plan](phase-07-mobile-yard-companion/implementation-plan-v1.md)) | [Implemented; shared replay activated by Phase 6](phase-07-mobile-yard-companion/implementation-report-v1.md) | Phase 6 |
 | 8 | [QR Labels](phase-08-qr-labels/v1.md) | Gated | Confirmed warehouse and labeling hardware |
-| 9 | [Yard Map](phase-09-yard-map/v1.md) | Planned with entry gate | Phase 7 and a confirmed site diagram |
+| 9 | [Yard Map v2](phase-09-yard-map/v2.md) ([v1 history](phase-09-yard-map/v1.md)) | Planned with entry gate | Phase 7 and a confirmed site diagram |
 | 10 | [Reporting and Operations Intelligence](phase-10-reporting-intelligence/v1.md) ([implementation plan](phase-10-reporting-intelligence/implementation-plan-v1.md)) | [Implemented; TBS field acceptance pending](phase-10-reporting-intelligence/implementation-report-v1.md) | Phase 7; Phase 9 only for map drill-through |
 
 Phase 8 is non-blocking. Phases 9 and 10 may proceed while QR labeling remains gated.
@@ -58,6 +58,8 @@ The report for every phase must include:
 ## Locked roadmap decisions
 
 - Lavon Yard currently models eight numbered Conex containers.
+- The configured Conex count is current Site configuration and may change over time.
+- An Inventory Project represents one customer job/project destination; its Material Lots may be stored across multiple TBS inventory Sites.
 - Lavon Yard and Richardson Office & Warehouse are distinct current Sites. Any future larger warehouse is additional and does not erase either Site's history.
 - Material becomes `Needs Verification` after 14 days without confirmation.
 - Pre-authentication mutations require an operator name every time.

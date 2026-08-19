@@ -1,5 +1,7 @@
 # Phase 4 Implementation Report v1
 
+> **Historical implementation report.** References to future manager-level work predate the current Operator/Tech access model.
+
 - Completed: 2026-08-07
 - Status: Implemented
 
@@ -65,4 +67,3 @@
 - Delivery scheduling, route planning, fleet assets, installation, and proof of installation remain out of scope.
 
 Phase 5 was not started.
-

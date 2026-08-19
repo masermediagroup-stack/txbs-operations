@@ -1,5 +1,7 @@
 # Phase 10 Implementation Report v1
 
+> **Historical implementation report.** Current user-facing access uses Operator and Tech; legacy role and site wording below describes the state at delivery.
+
 - Report date: 2026-08-14
 - Source plan: [Phase 10 v1](v1.md)
 - Implementation plan: [implementation-plan-v1.md](implementation-plan-v1.md)

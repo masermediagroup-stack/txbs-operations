@@ -1,5 +1,7 @@
 # Phase 3 Implementation Report v1
 
+> **Historical implementation report.** References to future manager-level work predate the current Operator/Tech access model.
+
 - Completed: 2026-08-06
 - Status: Implemented
 

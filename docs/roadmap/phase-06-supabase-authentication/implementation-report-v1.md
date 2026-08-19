@@ -1,5 +1,7 @@
 # Phase 6 Shared Demo Implementation Report v1
 
+> **Historical implementation report.** Superseded by [implementation report v2](implementation-report-v2.md) for the current Operator/Tech model.
+
 - Report date: 2026-08-12
 - Source plan: [Phase 6 v1](v1.md)
 - Temporary plan: [temporary-validation-plan-v1.md](temporary-validation-plan-v1.md)

@@ -1,5 +1,7 @@
 # Phase 10 Implementation Plan v1
 
+> **Historical implementation plan.** Current user-facing access uses Operator and Tech; role and site language below is retained as decision history.
+
 - Prepared: 2026-08-14
 - Status: Implemented; TBS field acceptance pending
 - Source plan: [v1.md](v1.md)

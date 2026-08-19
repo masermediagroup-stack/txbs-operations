@@ -1,5 +1,7 @@
 # Phase 6 Temporary Supabase and Vercel Validation Plan v1
 
+> **Historical validation plan.** Superseded by [implementation plan v4](implementation-plan-v4.md) and [demo setup guide v2](demo-setup-guide-v2.md).
+
 - Plan version: v1
 - Source plan: [Phase 6 v1](v1.md)
 - Baseline audited: 2026-08-10

@@ -1,5 +1,7 @@
 # Phase 6 Demo Setup Guide v1
 
+> **Historical setup guide.** Superseded by [demo setup guide v2](demo-setup-guide-v2.md).
+
 ## What is already configured
 
 - The temporary Supabase project contains the Phase 6 schema, RLS, private operational-media Storage, shared command functions, Lavon Yard, ten confirmed storage locations, and the current 18-project/36-lot baseline.
