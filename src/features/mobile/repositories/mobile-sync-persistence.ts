@@ -61,8 +61,9 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
   private async list<T>(storeName: string) {
     const database = await this.database()
     const transaction = database.transaction(storeName, "readonly")
+    const done = transactionDone(transaction)
     const records = await requestResult<T[]>(transaction.objectStore(storeName).getAll())
-    await transactionDone(transaction)
+    await done
     return records
   }
 
@@ -95,11 +96,19 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
 
   async removeMutation(id: string) {
     const database = await this.database()
-    const transaction = database.transaction([MUTATION_STORE, PHOTO_STORE], "readwrite")
-    transaction.objectStore(MUTATION_STORE).delete(id)
-    const photos = await requestResult<QueuedPhoto[]>(transaction.objectStore(PHOTO_STORE).getAll())
-    for (const photo of photos) if (photo.mutationId === id) transaction.objectStore(PHOTO_STORE).delete(photo.id)
-    await transactionDone(transaction)
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction([MUTATION_STORE, PHOTO_STORE], "readwrite")
+      transaction.objectStore(MUTATION_STORE).delete(id)
+      const photoStore = transaction.objectStore(PHOTO_STORE)
+      const request = photoStore.getAll() as IDBRequest<QueuedPhoto[]>
+      request.onsuccess = () => {
+        for (const photo of request.result) if (photo.mutationId === id) photoStore.delete(photo.id)
+      }
+      request.onerror = () => reject(request.error ?? new Error("Mobile storage request failed."))
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error ?? new Error("Mobile storage transaction failed."))
+      transaction.onabort = () => reject(transaction.error ?? new Error("Mobile storage transaction was aborted."))
+    })
   }
 
   async removePhoto(id: string) {
@@ -126,8 +135,9 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
   async getManifest() {
     const database = await this.database()
     const transaction = database.transaction(META_STORE, "readonly")
+    const done = transactionDone(transaction)
     const manifest = await requestResult<MobileCacheManifest | undefined>(transaction.objectStore(META_STORE).get(MANIFEST_KEY))
-    await transactionDone(transaction)
+    await done
     return manifest ?? null
   }
 
@@ -148,4 +158,3 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
     await transactionDone(transaction)
   }
 }
-

@@ -12,6 +12,7 @@ import {
   PackageOpen,
   RotateCcw,
   Search,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -49,6 +50,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useInventory } from "@/features/inventory/components/inventory-provider";
 import { RecordIssueSheet } from "@/features/inventory/components/issue-actions";
+import { PhotoUploadSlots } from "@/features/inventory/components/photo-upload-slots";
 import {
   positionPrecisions,
   type InventorySnapshot,
@@ -461,6 +463,7 @@ export function MovementWorkspace() {
       : {},
   );
   const [query, setQuery] = useState("");
+  const [siteFilter, setSiteFilter] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [mobileLimit, setMobileLimit] = useState(10);
@@ -476,6 +479,7 @@ export function MovementWorkspace() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const activeLots = useMemo(
     () => snapshot.lots.filter((lot) => lot.presence === "Present"),
@@ -489,20 +493,22 @@ export function MovementWorkspace() {
       `${group?.name ?? ""} ${project?.name ?? ""} ${locationName(snapshot, lot.locationId)}`.toLowerCase();
     return (
       (!query.trim() || haystack.includes(query.trim().toLowerCase())) &&
+      (!siteFilter || lot.siteId === siteFilter) &&
       (!projectFilter || lot.projectId === projectFilter) &&
       (!sourceFilter || lot.locationId === sourceFilter)
     );
   });
   const selectedLots = activeLots.filter((lot) => selected[lot.id]);
+  const selectedSiteIds = [...new Set(selectedLots.map((lot) => lot.siteId))];
   const handlingRequirements = [
     ...new Set(selectedLots.flatMap((lot) => lot.handlingRequirements)),
   ];
   const destinationLocations = snapshot.locations.filter(
     (location) =>
-      !destinationQuery.trim() ||
-      `${location.name} ${location.zone}`
+      (selectedSiteIds.length !== 1 || location.siteId === selectedSiteIds[0]) &&
+      (!destinationQuery.trim() || `${location.name} ${location.zone}`
         .toLowerCase()
-        .includes(destinationQuery.trim().toLowerCase()),
+        .includes(destinationQuery.trim().toLowerCase())),
   );
   const movements = snapshot.movements.toSorted(
     (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
@@ -531,6 +537,10 @@ export function MovementWorkspace() {
     const evidence = files(form, "movementPhoto");
     try {
       if (evidence.length > 3) throw new Error("Select no more than 3 movement photos.");
+      if (selectedSiteIds.length !== 1) throw new Error("Select material from one inventory Site per movement.");
+      const destination = snapshot.locations.find((location) => location.id === destinationId);
+      if (!destination || destination.siteId !== selectedSiteIds[0]) throw new Error("Destination must be in the same Site as the selected material.");
+      if (selectedLots.some((lot) => lot.locationId === destinationId)) throw new Error("Source and destination cannot be the same.");
       await moveMaterial({
         operatorName,
         reason,
@@ -625,7 +635,7 @@ export function MovementWorkspace() {
         title="Material movements"
         description="Move complete or partial material lots while preserving source history and quantity."
       />
-      <form onSubmit={submit} className="flex min-w-0 flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-6">
         <Card>
           <CardHeader className="relative border-b">
             <span
@@ -646,7 +656,7 @@ export function MovementWorkspace() {
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem_14rem]">
+            <div className="sticky top-14 z-20 -mx-1 grid gap-3 bg-card/95 px-1 py-1 backdrop-blur lg:static lg:z-auto lg:mx-0 lg:grid-cols-[minmax(0,1fr)_12rem_14rem_14rem] lg:bg-transparent lg:p-0">
               <Field>
                 <FieldLabel htmlFor="movement-search">Find material</FieldLabel>
                 <div className="relative">
@@ -663,7 +673,14 @@ export function MovementWorkspace() {
                   />
                 </div>
               </Field>
-              <Field>
+              <Field className="hidden lg:flex">
+                <FieldLabel htmlFor="movement-site">Site</FieldLabel>
+                <NativeSelect className="w-full" id="movement-site" value={siteFilter} onChange={(event) => setSiteFilter(event.target.value)}>
+                  <NativeSelectOption value="">All sites</NativeSelectOption>
+                  {snapshot.sites.filter((site) => site.active).map((site) => <NativeSelectOption key={site.id} value={site.id}>{site.name}</NativeSelectOption>)}
+                </NativeSelect>
+              </Field>
+              <Field className="hidden lg:flex">
                 <FieldLabel htmlFor="movement-project">Project</FieldLabel>
                 <NativeSelect
                   className="w-full"
@@ -679,7 +696,7 @@ export function MovementWorkspace() {
                   ))}
                 </NativeSelect>
               </Field>
-              <Field>
+              <Field className="hidden lg:flex">
                 <FieldLabel htmlFor="movement-source">
                   Current location
                 </FieldLabel>
@@ -699,6 +716,25 @@ export function MovementWorkspace() {
                   ))}
                 </NativeSelect>
               </Field>
+              <div className="flex items-center justify-between gap-2 lg:hidden">
+                <p className="min-w-0 truncate text-xs text-muted-foreground">{[
+                  snapshot.sites.find((site) => site.id === siteFilter)?.name ?? "All sites",
+                  snapshot.projects.find((project) => project.id === projectFilter)?.name ?? "All projects",
+                  snapshot.locations.find((location) => location.id === sourceFilter)?.name ?? "All locations",
+                ].join(" · ")}</p>
+                <Sheet>
+                  <SheetTrigger render={<Button type="button" variant="outline" size="lg" className="shrink-0" />}><SlidersHorizontal aria-hidden="true" />Filters</SheetTrigger>
+                  <SheetContent side="bottom" className="max-h-[92dvh] rounded-t-2xl">
+                    <SheetHeader className="border-b"><SheetTitle>Filter material</SheetTitle><SheetDescription>Narrow the selectable lots by site, project, and current location.</SheetDescription></SheetHeader>
+                    <div className="overflow-y-auto p-4"><FieldGroup>
+                      <Field><FieldLabel htmlFor="movement-site-mobile">Site</FieldLabel><NativeSelect id="movement-site-mobile" value={siteFilter} onChange={(event) => setSiteFilter(event.target.value)}><NativeSelectOption value="">All sites</NativeSelectOption>{snapshot.sites.filter((site) => site.active).map((site) => <NativeSelectOption key={site.id} value={site.id}>{site.name}</NativeSelectOption>)}</NativeSelect></Field>
+                      <Field><FieldLabel htmlFor="movement-project-mobile">Project</FieldLabel><NativeSelect id="movement-project-mobile" value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}><NativeSelectOption value="">All projects</NativeSelectOption>{snapshot.projects.map((project) => <NativeSelectOption key={project.id} value={project.id}>{project.name}</NativeSelectOption>)}</NativeSelect></Field>
+                      <Field><FieldLabel htmlFor="movement-source-mobile">Current location</FieldLabel><NativeSelect id="movement-source-mobile" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><NativeSelectOption value="">All locations</NativeSelectOption>{snapshot.locations.filter((location) => !siteFilter || location.siteId === siteFilter).map((location) => <NativeSelectOption key={location.id} value={location.id}>{location.name}</NativeSelectOption>)}</NativeSelect></Field>
+                    </FieldGroup></div>
+                    <SheetFooter className="border-t"><Button type="button" variant="outline" size="lg" onClick={() => { setSiteFilter(""); setProjectFilter(""); setSourceFilter(""); }}>Clear filters</Button><SheetTrigger render={<Button type="button" size="lg" />}>Show {filteredLots.length} lots</SheetTrigger></SheetFooter>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
 
             <div className="hidden overflow-x-auto rounded-lg border lg:block">
@@ -751,39 +787,22 @@ export function MovementWorkspace() {
                 const project = snapshot.projects.find(
                   (item) => item.id === lot.projectId,
                 );
-                const cells = selectionCells(lot, "mobile");
                 return (
-                  <article key={lot.id} className="rounded-xl border p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                  <label key={lot.id} className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring ${selected[lot.id] ? "border-primary bg-primary/5" : "bg-card"}`}>
+                    <input type="checkbox" className="mt-1 size-5 shrink-0" checked={Boolean(selected[lot.id])} onChange={(event) => toggle(lot, event.target.checked)} aria-label={`Select ${materialName(snapshot, lot)}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
                         <h3 className="font-semibold">
                           {materialName(snapshot, lot)}
                         </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {project?.name}
-                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{project?.name}</p>
+                        </div>
+                        <span className="shrink-0 font-mono text-xs">{lot.quantity ?? "Unknown"} {lot.packageType}</span>
                       </div>
-                      <Badge variant="outline">
-                        {lot.quantity ?? "Unknown"} {lot.packageType}
-                      </Badge>
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground"><span className="truncate" data-testid="lot-current-location">{locationName(snapshot, lot.locationId)}</span>{lot.handlingRequirements.length ? <span className="inline-flex shrink-0 items-center gap-1 text-destructive"><AlertTriangle aria-hidden="true" className="size-3.5" />Handling</span> : null}</div>
                     </div>
-                    <div className="my-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg bg-muted/55 p-3 text-xs">
-                      <span data-testid="lot-current-location">
-                        {locationName(snapshot, lot.locationId)}
-                      </span>
-                      <ArrowRight
-                        aria-hidden="true"
-                        className="text-brand-orange"
-                      />
-                      <span className="text-right text-muted-foreground">
-                        Choose below
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {cells.select}
-                      {cells.quantity}
-                    </div>
-                  </article>
+                  </label>
                 );
               })}
               {filteredLots.length > mobileLimit ? (
@@ -805,7 +824,34 @@ export function MovementWorkspace() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,.72fr)]">
+        <div className="sticky bottom-2 z-30 lg:hidden">
+          <Sheet>
+            <SheetTrigger render={<Button type="button" size="lg" className="h-12 w-full shadow-lg" disabled={!selectedLots.length} />}><MoveRight aria-hidden="true" />Review move ({selectedLots.length})</SheetTrigger>
+            <SheetContent side="bottom" className="h-[94dvh] rounded-t-2xl">
+              <SheetHeader className="relative border-b"><span aria-hidden="true" className="absolute inset-x-0 -bottom-px h-1 bg-brand-orange" /><SheetTitle>Review selected material</SheetTitle><SheetDescription>Confirm quantities, one destination, and movement evidence.</SheetDescription></SheetHeader>
+              <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
+                <div className="flex-1 overflow-y-auto p-4"><FieldGroup>
+                  <div className="flex flex-col gap-2">{selectedLots.map((lot) => <div key={lot.id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{materialName(snapshot, lot)}</p><p className="text-xs text-muted-foreground">{snapshot.projects.find((project) => project.id === lot.projectId)?.name} · {locationName(snapshot, lot.locationId)}</p></div><Button type="button" size="sm" variant="ghost" onClick={() => toggle(lot, false)}>Remove</Button></div>{lot.handlingRequirements.length ? <p className="mt-2 text-xs text-destructive"><AlertTriangle aria-hidden="true" className="mr-1 inline size-3.5" />{lot.handlingRequirements.join(" · ")}</p> : null}{lot.quantity === null ? <p className="mt-2 text-xs text-muted-foreground">Full lot · quantity unknown</p> : <Field className="mt-3"><FieldLabel htmlFor={`quantity-review-${lot.id}`}>Quantity to move</FieldLabel><Input id={`quantity-review-${lot.id}`} type="number" min="1" max={lot.quantity} step="1" inputMode="numeric" value={quantities[lot.id] ?? String(lot.quantity)} onChange={(event) => setQuantities((current) => ({ ...current, [lot.id]: event.target.value }))} required /></Field>}</div>)}</div>
+                  {selectedSiteIds.length > 1 ? <Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>One Site per movement</AlertTitle><AlertDescription>Remove lots until every selected item belongs to the same inventory Site.</AlertDescription></Alert> : null}
+                  <Field><FieldLabel htmlFor="destination-search-mobile-review">Search destinations</FieldLabel><Input id="destination-search-mobile-review" value={destinationQuery} onChange={(event) => setDestinationQuery(event.target.value)} placeholder="Conex, yard, or receiving area" /></Field>
+                  <Field><FieldLabel htmlFor="destination-mobile-review">Destination location</FieldLabel><NativeSelect id="destination-mobile-review" value={destinationId} onChange={(event) => setDestinationId(event.target.value)} required><NativeSelectOption value="">Select destination</NativeSelectOption>{destinationLocations.map((location) => <NativeSelectOption key={location.id} value={location.id}>{location.name} · {location.zone}</NativeSelectOption>)}</NativeSelect></Field>
+                  <div className="grid grid-cols-3 gap-2"><Field className="min-w-0"><FieldLabel htmlFor="movement-precision-mobile">Position</FieldLabel><NativeSelect id="movement-precision-mobile" value={precision} onChange={(event) => setPrecision(event.target.value as PositionPrecision)}>{positionPrecisions.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field><Field className="min-w-0"><FieldLabel htmlFor="movement-depth-mobile">Depth</FieldLabel><NativeSelect id="movement-depth-mobile" value={row} onChange={(event) => setRow(event.target.value)} disabled={precision !== "Exact"}><NativeSelectOption value="">Not set</NativeSelectOption>{["Front", "Middle", "Back"].map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field><Field className="min-w-0"><FieldLabel htmlFor="movement-side-mobile">Side</FieldLabel><NativeSelect id="movement-side-mobile" value={column} onChange={(event) => setColumn(event.target.value)} disabled={precision !== "Exact"}><NativeSelectOption value="">Not set</NativeSelectOption>{["Left", "Center", "Right"].map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field></div>
+                  <Field><FieldLabel htmlFor="movement-position-note-mobile">Position note</FieldLabel><Input id="movement-position-note-mobile" value={positionNote} onChange={(event) => setPositionNote(event.target.value)} /></Field>
+                  <Field><FieldLabel htmlFor="movement-reason-mobile">Movement reason</FieldLabel><Input id="movement-reason-mobile" value={reason} onChange={(event) => setReason(event.target.value)} required placeholder="Why is this material moving?" /></Field>
+                  <Field><FieldLabel htmlFor="movement-note-mobile">Movement note</FieldLabel><Textarea id="movement-note-mobile" value={note} onChange={(event) => setNote(event.target.value)} /></Field>
+                  <PhotoUploadSlots id="movement-photo-mobile" name="movementPhoto" label="Movement photos" description="Optional. Add up to three photos from the camera or photo library." />
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border p-4"><div><p className="text-xs text-muted-foreground">Sources</p><p className="font-mono text-xl font-semibold">{new Set(selectedLots.map((lot) => lot.locationId)).size}</p></div><ArrowRight aria-hidden="true" className="text-brand-orange" /><div className="text-right"><p className="text-xs text-muted-foreground">Destination</p><p className="truncate font-medium">{destinationId ? locationName(snapshot, destinationId) : "Not selected"}</p></div></div>
+                  <Field><FieldLabel htmlFor="movement-operator-mobile">Operator name</FieldLabel><Input id="movement-operator-mobile" value={operatorName} onChange={(event) => setOperatorName(event.target.value)} required autoComplete="name" /></Field>
+                  <p className="sr-only" aria-live="polite">{selectedLots.length} lots selected. {selectedLots.filter((lot) => lot.quantity !== null).reduce((sum, lot) => sum + Number(quantities[lot.id] ?? lot.quantity ?? 0), 0)} known packages. {selectedLots.filter((lot) => lot.quantity === null).length} quantities unknown. Destination {destinationId ? locationName(snapshot, destinationId) : "not selected"}.</p>
+                  {error ? <FieldError>{error}</FieldError> : null}{message ? <Alert><CheckCircle2 aria-hidden="true" /><AlertTitle>Movement recorded</AlertTitle><AlertDescription>{message}</AlertDescription></Alert> : null}
+                </FieldGroup></div>
+                <SheetFooter className="border-t"><Button type="submit" size="lg" className="h-12" disabled={saving || !selectedLots.length || !destinationId || selectedSiteIds.length !== 1}>{saving ? "Moving material…" : `Move ${selectedLots.length} lot${selectedLots.length === 1 ? "" : "s"}`}</Button></SheetFooter>
+              </form>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <form onSubmit={submit} className="hidden gap-6 lg:grid xl:grid-cols-[minmax(0,1fr)_minmax(20rem,.72fr)]">
           <Card>
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
@@ -949,7 +995,6 @@ export function MovementWorkspace() {
                     name="movementPhoto"
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     multiple
                   />
                   <FieldDescription>Optional. Select up to 3 photos.</FieldDescription>
@@ -1047,8 +1092,8 @@ export function MovementWorkspace() {
               </CardContent>
             </Card>
           </aside>
-        </div>
-      </form>
+        </form>
+      </div>
 
       <Card>
         <CardHeader className="border-b-0 sm:border-b">
@@ -1060,14 +1105,14 @@ export function MovementWorkspace() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {movements.length ? (
-            movements.map((movement) => {
+            movements.map((movement, index) => {
               const reversed = snapshot.movements.some(
                 (item) => item.reversalOfMovementId === movement.id,
               );
               return (
                 <article
                   key={movement.id}
-                  className="relative overflow-hidden rounded-xl border transition-colors hover:bg-muted/35 focus-within:bg-muted/35"
+                  className={`relative overflow-hidden rounded-xl border transition-colors hover:bg-muted/35 focus-within:bg-muted/35 ${index >= 3 && !historyExpanded ? "hidden lg:block" : ""}`}
                 >
                   <div className="flex flex-col">
                     <MovementDetailSheet
@@ -1093,6 +1138,7 @@ export function MovementWorkspace() {
               No material movements have been recorded on this device.
             </p>
           )}
+          {movements.length > 3 ? <Button type="button" variant="outline" size="lg" className="lg:hidden" onClick={() => setHistoryExpanded((current) => !current)}>{historyExpanded ? "Show recent only" : `Show ${movements.length - 3} older movements`}</Button> : null}
         </CardContent>
       </Card>
     </div>

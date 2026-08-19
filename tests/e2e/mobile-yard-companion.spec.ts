@@ -41,17 +41,20 @@ test("an offline movement is retained and visibly queued on the device", async (
   await expect(page.getByTestId("sync-status-trigger")).toHaveAttribute("aria-label", /Offline/)
 
   const isDesktop = (page.viewportSize()?.width ?? 0) >= 1024
-  const lotEntry = isDesktop ? page.locator("table tbody tr").first() : page.locator("article").first()
+  const lotEntry = isDesktop ? page.locator("table tbody tr").first() : page.locator('input[type="checkbox"]:visible').first().locator("..")
   const sourceText = await lotEntry.textContent()
-  await lotEntry.getByLabel("Select").check()
-  const options = await page.getByLabel("Destination location").locator("option").allTextContents()
+  await lotEntry.getByRole("checkbox").check()
+  if (!isDesktop) await page.getByRole("button", { name: "Review move (1)" }).click()
+  const actionSurface = isDesktop ? page : page.getByRole("dialog")
+  const options = await actionSurface.getByLabel("Destination location").locator("option").allTextContents()
   const destination = options.find((option) => option !== "Select destination" && !sourceText?.includes(locationFromOption(option)))!
-  await page.getByLabel("Destination location").selectOption({ label: destination })
-  await page.getByLabel("Movement reason").fill("Offline field move")
-  await page.getByLabel("Operator name").fill("Offline Operator")
-  await page.getByRole("button", { name: "Move 1 lot" }).click()
+  await actionSurface.getByLabel("Destination location").selectOption({ label: destination })
+  await actionSurface.getByLabel("Movement reason").fill("Offline field move")
+  await actionSurface.getByLabel("Operator name").fill("Offline Operator")
+  await actionSurface.getByRole("button", { name: "Move 1 lot" }).click()
 
-  await expect(page.getByText("1 material lot saved on this device and queued for shared sync.")).toBeVisible()
+  await expect(actionSurface.getByText("1 material lot saved on this device and queued for shared sync.")).toBeVisible()
+  if (!isDesktop) await page.keyboard.press("Escape")
   await page.getByTestId("sync-status-trigger").click()
   const sheet = page.getByRole("dialog")
   await expect(sheet.getByText("Move material", { exact: true })).toBeVisible()

@@ -12,7 +12,7 @@ test("moves a selected lot and preserves a reversible history event", async ({
   const isDesktop = (page.viewportSize()?.width ?? 0) >= 1024;
   const lotEntry = isDesktop
     ? page.locator("table tbody tr").first()
-    : page.locator("article").first();
+    : page.locator('input[type="checkbox"]:visible').first().locator("..");
   const sourceText = await lotEntry.textContent();
   const expectedMaterial = isDesktop
     ? (await lotEntry.locator("td").nth(0).innerText()).trim()
@@ -25,8 +25,10 @@ test("moves a selected lot and preserves a reversible history event", async ({
         await lotEntry.locator("td").nth(2).locator("span").first().innerText()
       ).trim()
     : (await lotEntry.getByTestId("lot-current-location").innerText()).trim();
-  await lotEntry.getByLabel("Select").check();
-  const options = await page
+  await lotEntry.getByRole("checkbox").check();
+  if (!isDesktop) await page.getByRole("button", { name: "Review move (1)" }).click();
+  const actionSurface = isDesktop ? page : page.getByRole("dialog");
+  const options = await actionSurface
     .getByLabel("Destination location")
     .locator("option")
     .allTextContents();
@@ -35,21 +37,20 @@ test("moves a selected lot and preserves a reversible history event", async ({
       option !== "Select destination" &&
       !sourceText?.includes(locationFromOption(option)),
   )!;
-  await page
+  await actionSurface
     .getByLabel("Destination location")
     .selectOption({ label: destination });
-  await page.getByLabel("Movement reason").fill("E2E staging move");
-  await page.getByLabel("Operator name").fill("Playwright Operator");
-  await page.getByLabel("Proof photo").setInputFiles([
-    { name: "movement-1.jpg", mimeType: "image/jpeg", buffer: Buffer.from("movement evidence 1") },
-    { name: "movement-2.jpg", mimeType: "image/jpeg", buffer: Buffer.from("movement evidence 2") },
-    { name: "movement-3.jpg", mimeType: "image/jpeg", buffer: Buffer.from("movement evidence 3") },
-  ]);
-  await page.getByRole("button", { name: "Move 1 lot" }).click();
+  await actionSurface.getByLabel("Movement reason").fill("E2E staging move");
+  await actionSurface.getByLabel("Operator name").fill("Playwright Operator");
+  const photoFiles = [1, 2, 3].map((value) => ({ name: `movement-${value}.jpg`, mimeType: "image/jpeg", buffer: Buffer.from(`movement evidence ${value}`) }));
+  if (isDesktop) await actionSurface.getByLabel("Proof photo").setInputFiles(photoFiles);
+  else for (const [index, file] of photoFiles.entries()) await actionSurface.getByLabel(`Add movement photos ${index + 1} of 3`).setInputFiles(file);
+  await actionSurface.getByRole("button", { name: "Move 1 lot" }).click();
 
   await expect(
-    page.getByText("1 material lot moved and recorded."),
+    actionSurface.getByText("1 material lot moved and recorded."),
   ).toBeVisible();
+  if (!isDesktop) await page.keyboard.press("Escape");
   const history = page
     .locator("article")
     .filter({ has: page.getByRole("heading", { name: "E2E staging move" }) });
@@ -83,6 +84,8 @@ test("movement workspace is accessible on a mobile viewport", async ({
   await expect(
     page.getByRole("button", { name: "Show 10 more lots" }),
   ).toBeVisible();
+  await page.locator('input[type="checkbox"]:visible').first().check();
+  await expect(page.getByRole("button", { name: "Review move (1)" })).toBeVisible();
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
