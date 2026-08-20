@@ -4,10 +4,10 @@ import { expect, test } from "@playwright/test"
 test("prepares, readies, and departs project material without requiring a photo", async ({ page }) => {
   await page.goto("/inventory/projects/plano-west")
 
-  await page.getByRole("button", { name: "Confirm still here" }).first().click()
+  await page.getByRole("button", { name: "Verify material" }).first().click()
   let sheet = page.locator('[data-slot="sheet-content"]')
   await sheet.getByLabel("Operator name").fill("Playwright Yard Operator")
-  await sheet.getByRole("button", { name: "Confirm still here" }).click()
+  await sheet.getByRole("button", { name: "Save verification" }).click()
   await expect(sheet).toBeHidden()
 
   await page.getByRole("link", { name: "Prepare outbound" }).click()

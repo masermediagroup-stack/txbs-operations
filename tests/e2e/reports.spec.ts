@@ -6,7 +6,7 @@ test("reports provide filters, worklists, drill-through, and CSV at the current 
   await expect(page.getByRole("heading", { name: "Reports" })).toBeAttached();
   await expect(page.getByText("Operations intelligence")).toBeVisible();
   await expect(page.getByRole("tab", { name: "Verification" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByText("Verification worklist")).toBeVisible();
+  await expect(page.getByText("Material verification worklist")).toBeVisible();
 
   await page.getByRole("tab", { name: "Age & exposure" }).click();
   await expect(page.getByText("Material age and exposure")).toBeVisible();

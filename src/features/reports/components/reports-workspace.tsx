@@ -42,6 +42,7 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { useInventory } from "@/features/inventory/components/inventory-provider";
+import { VerifyLotSheet } from "@/features/inventory/components/lot-actions";
 import {
   buildOperationsReports,
   REPORT_FORMULA_VERSION,
@@ -75,6 +76,7 @@ type DisplayRow = {
   badge: string;
   badgeVariant: "default" | "secondary" | "outline" | "destructive";
   cells: DisplayCell[];
+  lotId?: string;
 };
 
 type DisplayReport = {
@@ -149,17 +151,18 @@ function makeDisplayReport(
 ): DisplayReport {
   if (category === "verification") {
     return {
-      title: "Verification worklist",
-      description: "Fourteen-day confirmation status for every present Material Lot.",
+      title: "Material verification worklist",
+      description: "Verify material here or open its project to review every lot together. Saved locations are prefilled.",
       emptyTitle: "No Material Lots match these filters",
       emptyDescription: "Clear the date, project, location, or search filters to restore the verification worklist.",
       rows: reports.verification.map((row) => ({
         id: row.id,
         title: row.projectName,
         subtitle: row.materialName,
-        href: `/inventory/projects/${row.projectSlug}`,
+        href: `/inventory/projects/${row.projectSlug}#material-lot-${row.lotId}`,
         badge: row.state,
         badgeVariant: badgeVariant(row.state),
+        lotId: row.lotId,
         cells: [
           { label: "Location", display: row.locationName, sort: row.locationName, csv: row.locationName },
           { label: "Quantity", display: quantity(row.quantity, row.packageType), sort: row.quantity ?? Number.MAX_SAFE_INTEGER, csv: row.quantity },
@@ -503,7 +506,7 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
         </div>
       </div>
 
-      <Card role="tabpanel" aria-label={selectedCategory.label}>
+      <Card id={selectedCategory.id === "verification" ? "material-verification-worklist" : undefined} className="scroll-mt-24" role="tabpanel" aria-label={selectedCategory.label}>
         <CardHeader className="border-b">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -538,8 +541,9 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedRows.map((row) => (
-                      <tr key={row.id} className="group relative cursor-pointer border-t align-middle transition-colors hover:bg-muted/45 focus-within:bg-muted/45">
+                    {sortedRows.map((row) => {
+                      const verificationLot = row.lotId ? snapshot.lots.find((lot) => lot.id === row.lotId) : null;
+                      return <tr key={row.id} className="group relative cursor-pointer border-t align-middle transition-colors hover:bg-muted/45 focus-within:bg-muted/45">
                         <td className="min-w-0 px-2 py-3 xl:px-3">
                           <Link href={row.href} className="outline-none after:absolute after:inset-0 after:z-10 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring">
                             <span className="block break-words font-medium">{row.title}</span>
@@ -547,22 +551,22 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
                           </Link>
                         </td>
                         {row.cells.map((cell) => <td key={cell.label} className="min-w-0 break-words px-2 py-3 align-middle tabular-nums xl:px-3">{cell.display}</td>)}
-                        <td className="min-w-0 px-2 py-3 xl:px-3"><Badge variant={row.badgeVariant} className="max-w-full whitespace-normal text-left">{row.badge}</Badge></td>
-                      </tr>
-                    ))}
+                        <td className="min-w-0 px-2 py-3 xl:px-3"><div className="flex flex-col items-start gap-2"><Badge variant={row.badgeVariant} className={row.badge === "Verified" ? "max-w-full bg-brand-orange text-left text-white" : "max-w-full whitespace-normal text-left"}>{row.badge}</Badge>{verificationLot && row.badge !== "Verified" ? <div className="relative z-20"><VerifyLotSheet lot={verificationLot} /></div> : null}</div></td>
+                      </tr>;
+                    })}
                   </tbody>
                 </table>
               </div>
               <div className="flex flex-col gap-3 lg:hidden">
-                {sortedRows.map((row) => (
-                  <Link key={row.id} href={row.href} className="touch-manipulation rounded-xl border p-4 outline-none hover:bg-muted/45 focus-visible:ring-2 focus-visible:ring-ring">
-                    <div><h2 className="break-words font-semibold">{row.title}</h2><p className="break-words text-xs text-muted-foreground">{row.subtitle}</p></div>
-                    <Badge variant={row.badgeVariant} className="mt-3">{row.badge}</Badge>
-                    <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                      {row.cells.map((cell) => <div key={cell.label} className="flex items-start justify-between gap-4 border-t pt-2"><dt className="text-muted-foreground">{cell.label}</dt><dd className="text-right font-medium tabular-nums">{cell.display}</dd></div>)}
-                    </dl>
-                  </Link>
-                ))}
+                {sortedRows.map((row) => {
+                  const verificationLot = row.lotId ? snapshot.lots.find((lot) => lot.id === row.lotId) : null;
+                  return <article key={row.id} className="relative touch-manipulation rounded-xl border p-4 transition hover:bg-muted/45 focus-within:bg-muted/45">
+                    <Link href={row.href} className="outline-none after:absolute after:inset-0 after:z-10 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-ring"><h2 className="break-words font-semibold">{row.title}</h2><p className="break-words text-xs text-muted-foreground">{row.subtitle}</p></Link>
+                    <Badge variant={row.badgeVariant} className={row.badge === "Verified" ? "mt-3 bg-brand-orange text-white" : "mt-3"}>{row.badge}</Badge>
+                    <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">{row.cells.map((cell) => <div key={cell.label} className="flex items-start justify-between gap-4 border-t pt-2"><dt className="text-muted-foreground">{cell.label}</dt><dd className="text-right font-medium tabular-nums">{cell.display}</dd></div>)}</dl>
+                    {verificationLot && row.badge !== "Verified" ? <div className="relative z-20 mt-4 border-t pt-3"><VerifyLotSheet lot={verificationLot} /></div> : null}
+                  </article>;
+                })}
               </div>
             </>
           ) : (
