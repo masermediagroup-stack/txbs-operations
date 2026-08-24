@@ -113,6 +113,14 @@ export function ReceivingWorkspace() {
   const drafts = snapshot.receipts
     .filter((receipt) => receipt.status === "Draft")
     .toSorted((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  const recentReceipts = snapshot.receipts
+    .filter((receipt) => receipt.status === "Received")
+    .toSorted(
+      (a, b) =>
+        Date.parse(b.completedAt ?? b.updatedAt) -
+        Date.parse(a.completedAt ?? a.updatedAt),
+    )
+    .slice(0, 8);
 
   function updateLine(key: string, update: Partial<LineState>) {
     setLines((current) =>
@@ -698,8 +706,8 @@ export function ReceivingWorkspace() {
             <CardHeader className="border-b">
               <CardTitle>4. Label, stage, and review</CardTitle>
               <CardDescription>
-                Phase 2 records the handwritten label; it does not generate
-                labels or QR codes.
+                Record the project text written on the material, confirm the
+                physical label, and choose its receiving or storage location.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -866,15 +874,8 @@ export function ReceivingWorkspace() {
               <CardTitle>Recent receipts</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              {snapshot.receipts
-                .filter((receipt) => receipt.status === "Received")
-                .toSorted(
-                  (a, b) =>
-                    Date.parse(b.completedAt ?? b.updatedAt) -
-                    Date.parse(a.completedAt ?? a.updatedAt),
-                )
-                .slice(0, 8)
-                .map((receipt) => (
+              {recentReceipts.length ? (
+                recentReceipts.map((receipt) => (
                   <div key={receipt.id} className="rounded-lg bg-muted/55 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -905,7 +906,12 @@ export function ReceivingWorkspace() {
                       />
                     </div>
                   </div>
-                ))}
+                ))
+              ) : (
+                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  No completed receipts yet.
+                </p>
+              )}
             </CardContent>
           </Card>
         </aside>

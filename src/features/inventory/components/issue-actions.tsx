@@ -120,7 +120,7 @@ export function RecordIssueSheet({ projectId = null, lotId = null, receiptId = n
             <Field data-invalid={type === "Damaged" && Boolean(error) && !file}>
               <FieldLabel htmlFor={`${prefix}-photo`}><Camera aria-hidden="true" data-icon="inline-start" />{type === "Damaged" ? "Damage photo" : "Photo evidence"}</FieldLabel>
               <Input id={`${prefix}-photo`} name="photo" type="file" accept="image/*" capture="environment" required={type === "Damaged"} aria-invalid={type === "Damaged" && Boolean(error) && !file} onChange={(event) => { setFile(event.target.files?.[0] ?? null); setError("") }} />
-              <FieldDescription>{type === "Damaged" ? "Required. Capture the visible damage before recording this Issue." : "Optional. Photos remain on this device and are included in backups."}</FieldDescription>
+              <FieldDescription>{type === "Damaged" ? "Required. Capture the visible damage before recording this Issue." : "Optional. Photo evidence is stored with the Issue and included in backups."}</FieldDescription>
               <PhotoPreview file={file} />
             </Field>
             <Field orientation="horizontal"><input id={`${prefix}-blocking`} name="blocking" type="checkbox" className="size-4" /><FieldLabel htmlFor={`${prefix}-blocking`}>Blocks project readiness</FieldLabel></Field>

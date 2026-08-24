@@ -6,7 +6,6 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
-  Settings,
   LogOut,
 } from "lucide-react";
 
@@ -134,13 +133,6 @@ export function TopNavigation({ operator }: { operator: CurrentOperator | null }
                   {operator ? `${operator.role} · ${operator.email}` : "Operations workspace"}
                 </span>
               </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem render={<Link href="/settings" />}>
-                <Settings aria-hidden="true" />
-                Settings
-              </DropdownMenuItem>
             </DropdownMenuGroup>
             {operator ? (
               <>

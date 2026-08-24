@@ -80,6 +80,12 @@ function locationName(
   );
 }
 
+function locationOptionLabel(location: { name: string; zone: string }) {
+  return location.name === location.zone
+    ? location.name
+    : `${location.name} · ${location.zone}`;
+}
+
 function materialName(
   snapshot: ReturnType<typeof useInventory>["snapshot"],
   lot: MaterialLot,
@@ -834,7 +840,7 @@ export function MovementWorkspace() {
                   <div className="flex flex-col gap-2">{selectedLots.map((lot) => <div key={lot.id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{materialName(snapshot, lot)}</p><p className="text-xs text-muted-foreground">{snapshot.projects.find((project) => project.id === lot.projectId)?.name} · {locationName(snapshot, lot.locationId)}</p></div><Button type="button" size="sm" variant="ghost" onClick={() => toggle(lot, false)}>Remove</Button></div>{lot.handlingRequirements.length ? <p className="mt-2 text-xs text-destructive"><AlertTriangle aria-hidden="true" className="mr-1 inline size-3.5" />{lot.handlingRequirements.join(" · ")}</p> : null}{lot.quantity === null ? <p className="mt-2 text-xs text-muted-foreground">Full lot · quantity unknown</p> : <Field className="mt-3"><FieldLabel htmlFor={`quantity-review-${lot.id}`}>Quantity to move</FieldLabel><Input id={`quantity-review-${lot.id}`} type="number" min="1" max={lot.quantity} step="1" inputMode="numeric" value={quantities[lot.id] ?? String(lot.quantity)} onChange={(event) => setQuantities((current) => ({ ...current, [lot.id]: event.target.value }))} required /></Field>}</div>)}</div>
                   {selectedSiteIds.length > 1 ? <Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>One Site per movement</AlertTitle><AlertDescription>Remove lots until every selected item belongs to the same inventory Site.</AlertDescription></Alert> : null}
                   <Field><FieldLabel htmlFor="destination-search-mobile-review">Search destinations</FieldLabel><Input id="destination-search-mobile-review" value={destinationQuery} onChange={(event) => setDestinationQuery(event.target.value)} placeholder="Conex, yard, or receiving area" /></Field>
-                  <Field><FieldLabel htmlFor="destination-mobile-review">Destination location</FieldLabel><NativeSelect id="destination-mobile-review" value={destinationId} onChange={(event) => setDestinationId(event.target.value)} required><NativeSelectOption value="">Select destination</NativeSelectOption>{destinationLocations.map((location) => <NativeSelectOption key={location.id} value={location.id}>{location.name} · {location.zone}</NativeSelectOption>)}</NativeSelect></Field>
+                  <Field><FieldLabel htmlFor="destination-mobile-review">Destination location</FieldLabel><NativeSelect id="destination-mobile-review" value={destinationId} onChange={(event) => setDestinationId(event.target.value)} required><NativeSelectOption value="">Select destination</NativeSelectOption>{destinationLocations.map((location) => <NativeSelectOption key={location.id} value={location.id}>{locationOptionLabel(location)}</NativeSelectOption>)}</NativeSelect></Field>
                   <div className="grid grid-cols-3 gap-2"><Field className="min-w-0"><FieldLabel htmlFor="movement-precision-mobile">Position</FieldLabel><NativeSelect id="movement-precision-mobile" value={precision} onChange={(event) => setPrecision(event.target.value as PositionPrecision)}>{positionPrecisions.map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field><Field className="min-w-0"><FieldLabel htmlFor="movement-depth-mobile">Depth</FieldLabel><NativeSelect id="movement-depth-mobile" value={row} onChange={(event) => setRow(event.target.value)} disabled={precision !== "Exact"}><NativeSelectOption value="">Not set</NativeSelectOption>{["Front", "Middle", "Back"].map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field><Field className="min-w-0"><FieldLabel htmlFor="movement-side-mobile">Side</FieldLabel><NativeSelect id="movement-side-mobile" value={column} onChange={(event) => setColumn(event.target.value)} disabled={precision !== "Exact"}><NativeSelectOption value="">Not set</NativeSelectOption>{["Left", "Center", "Right"].map((item) => <NativeSelectOption key={item}>{item}</NativeSelectOption>)}</NativeSelect></Field></div>
                   <Field><FieldLabel htmlFor="movement-position-note-mobile">Position note</FieldLabel><Input id="movement-position-note-mobile" value={positionNote} onChange={(event) => setPositionNote(event.target.value)} /></Field>
                   <Field><FieldLabel htmlFor="movement-reason-mobile">Movement reason</FieldLabel><Input id="movement-reason-mobile" value={reason} onChange={(event) => setReason(event.target.value)} required placeholder="Why is this material moving?" /></Field>
@@ -894,7 +900,7 @@ export function MovementWorkspace() {
                     </NativeSelectOption>
                     {destinationLocations.map((location) => (
                       <NativeSelectOption key={location.id} value={location.id}>
-                        {location.name} · {location.zone}
+                        {locationOptionLabel(location)}
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>
@@ -1135,7 +1141,7 @@ export function MovementWorkspace() {
             })
           ) : (
             <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No material movements have been recorded on this device.
+              No material movements have been recorded yet.
             </p>
           )}
           {movements.length > 3 ? <Button type="button" variant="outline" size="lg" className="lg:hidden" onClick={() => setHistoryExpanded((current) => !current)}>{historyExpanded ? "Show recent only" : `Show ${movements.length - 3} older movements`}</Button> : null}
