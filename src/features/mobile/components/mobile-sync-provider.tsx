@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { MobileCommandType, QueueMutationInput, QueuedActor, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import { IndexedDbMobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
-import { prepareQueuedCommandPayload, queuedPhotoFormData, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { prepareQueuedCommandPayload, queuedPhotoRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
 
 const SYNC_TAG = "tbs-operations-sync"
 
@@ -107,9 +107,9 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
         const uploadById = new Map<string, { id: string; fileName: string }>()
         try {
           for (const photo of mutationPhotos) {
-            const form = queuedPhotoFormData(photo, mutation.clientMutationId, mutation.siteId)
-            const response = await fetch(sameOriginApiUrl("/api/inventory/uploads", window.location.href), { method: "POST", body: form })
-            const body = await response.json() as { id?: string; fileName?: string; error?: string }
+            const upload = queuedPhotoRequest(photo, mutation.clientMutationId, mutation.siteId, window.location.href)
+            const response = await fetch(upload.url, upload.init)
+            const body = await response.json().catch(() => ({ error: `The queued photo upload returned HTTP ${response.status}.` })) as { id?: string; fileName?: string; error?: string }
             if (!response.ok || !body.id || !body.fileName) throw new Error(body.error ?? "A queued photo could not be uploaded.")
             uploadById.set(photo.id, { id: body.id, fileName: body.fileName })
           }
@@ -122,7 +122,7 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ commandId: mutation.clientMutationId, commandType: mutation.commandType, siteId: mutation.siteId, payload }),
           })
-          const body = await response.json() as { error?: string }
+          const body = await response.json().catch(() => ({ error: `The queued command returned HTTP ${response.status}.` })) as { error?: string }
           if (response.status === 409) {
             await journal.addConflict({
               id: crypto.randomUUID(),

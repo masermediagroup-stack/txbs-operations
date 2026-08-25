@@ -14,20 +14,30 @@ export function sameOriginApiUrl(path: string, currentUrl: string) {
   return new URL(path, currentUrl).href
 }
 
-export function queuedPhotoFormData(photo: QueuedPhoto, commandId: string, siteId: string) {
-  const form = new FormData()
-  form.set("commandId", commandId)
-  form.set("siteId", siteId)
-  form.set("uploadId", photo.id)
+export function queuedPhotoRequest(photo: QueuedPhoto, commandId: string, siteId: string, currentUrl: string) {
+  const url = new URL("/api/inventory/uploads", currentUrl)
+  url.searchParams.set("commandId", commandId)
+  url.searchParams.set("siteId", siteId)
+  url.searchParams.set("uploadId", photo.id)
+  url.searchParams.set("fileName", safeQueuedFileName(photo.fileName))
 
-  // WebKit can reject a File reconstructed from a Blob read back from IndexedDB.
-  // Appending the persisted Blob with an explicit safe filename produces the same
-  // multipart File on the server without using the fragile client-side constructor.
-  const blob = photo.blob.type === photo.contentType
+  // iOS WebKit can omit the multipart boundary when a Blob restored from
+  // IndexedDB is appended to FormData. A raw request body avoids multipart
+  // parsing entirely while retaining the same authenticated upload endpoint.
+  const body = photo.blob.type === photo.contentType
     ? photo.blob
     : new Blob([photo.blob], { type: photo.contentType })
-  form.append("file", blob, safeQueuedFileName(photo.fileName))
-  return form
+  return {
+    url: url.href,
+    init: {
+      method: "POST",
+      headers: {
+        "Content-Type": photo.contentType,
+        "X-TBS-Queued-Upload": "1",
+      },
+      body,
+    } satisfies RequestInit,
+  }
 }
 
 function restorePhotos(value: unknown, uploadById: ReadonlyMap<string, UploadedQueuedPhoto>): unknown {

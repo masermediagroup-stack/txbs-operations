@@ -73,7 +73,9 @@ test("an offline movement is retained and visibly queued on the device", async (
 
   const replay = { command: null as { payload?: { photoUploads?: unknown[] } } | null }
   await page.route("**/api/inventory/uploads", async (route) => {
-    expect(route.request().headers()["content-type"]).toContain("multipart/form-data")
+    expect(route.request().headers()["content-type"]).toBe("image/jpeg")
+    expect(route.request().headers()["x-tbs-queued-upload"]).toBe("1")
+    expect(route.request().postDataBuffer()?.toString()).toBe("offline yard proof")
     await route.fulfill({
       status: 200,
       contentType: "application/json",

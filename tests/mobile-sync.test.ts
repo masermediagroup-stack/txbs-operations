@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { MobileCacheManifest, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import type { MobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { buildQueuedMutation, formatBytes, MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
-import { prepareQueuedCommandPayload, queuedPhotoFormData, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { prepareQueuedCommandPayload, queuedPhotoRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
 
 const siteId = "10000000-0000-4000-8000-000000000001"
 const lotId = "10000000-0000-4000-8000-000000000002"
@@ -90,7 +90,7 @@ describe("Phase 7 mobile sync journal", () => {
     expect(formatBytes(25.4 * 1024 * 1024)).toBe("25 MB")
   })
 
-  it("rebuilds a queued photo as Safari-safe multipart data", () => {
+  it("rebuilds a queued photo as a Safari-safe raw request", () => {
     const photo: QueuedPhoto = {
       id: mutationId,
       mutationId,
@@ -105,11 +105,12 @@ describe("Phase 7 mobile sync journal", () => {
       blob: new Blob(["photo"], { type: "image/jpeg" }),
     }
 
-    const form = queuedPhotoFormData(photo, mutationId, siteId)
-    const file = form.get("file")
-    expect(file).toBeInstanceOf(File)
-    expect((file as File).name).toBe("IMG-1001-yard-.jpg")
-    expect((file as File).type).toBe("image/jpeg")
+    const request = queuedPhotoRequest(photo, mutationId, siteId, "https://tbs.example/inventory/movements")
+    const url = new URL(request.url)
+    expect(url.pathname).toBe("/api/inventory/uploads")
+    expect(url.searchParams.get("fileName")).toBe("IMG-1001-yard-.jpg")
+    expect(request.init.headers).toMatchObject({ "Content-Type": "image/jpeg", "X-TBS-Queued-Upload": "1" })
+    expect(request.init.body).toBe(photo.blob)
     expect(sameOriginApiUrl("/api/inventory/uploads", "https://tbs.example/inventory/movements")).toBe("https://tbs.example/api/inventory/uploads")
   })
 
