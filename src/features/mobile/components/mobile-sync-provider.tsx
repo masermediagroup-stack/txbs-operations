@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { MobileCommandType, QueueMutationInput, QueuedActor, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import { IndexedDbMobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
+import { prepareQueuedCommandPayload, queuedPhotoFormData, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
 
 const SYNC_TAG = "tbs-operations-sync"
 
@@ -106,30 +107,17 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
         const uploadById = new Map<string, { id: string; fileName: string }>()
         try {
           for (const photo of mutationPhotos) {
-            const form = new FormData()
-            form.set("commandId", mutation.clientMutationId)
-            form.set("siteId", mutation.siteId)
-            form.set("uploadId", photo.id)
-            form.set("file", new File([photo.blob], photo.fileName, { type: photo.contentType }))
-            const response = await fetch("/api/inventory/uploads", { method: "POST", body: form })
+            const form = queuedPhotoFormData(photo, mutation.clientMutationId, mutation.siteId)
+            const response = await fetch(sameOriginApiUrl("/api/inventory/uploads", window.location.href), { method: "POST", body: form })
             const body = await response.json() as { id?: string; fileName?: string; error?: string }
             if (!response.ok || !body.id || !body.fileName) throw new Error(body.error ?? "A queued photo could not be uploaded.")
             uploadById.set(photo.id, { id: body.id, fileName: body.fileName })
           }
-          const restorePhotos = (value: unknown): unknown => {
-            if (Array.isArray(value)) return value.map(restorePhotos)
-            if (value && typeof value === "object") {
-              const record = value as Record<string, unknown>
-              if (typeof record.queuedPhotoId === "string") return uploadById.get(record.queuedPhotoId) ?? null
-              return Object.fromEntries(Object.entries(record).map(([key, item]) => [key, restorePhotos(item)]))
-            }
-            return value
-          }
-          const payload = restorePhotos(mutation.payload) as Record<string, unknown>
+          const payload = prepareQueuedCommandPayload(mutation.commandType, mutation.payload, uploadById)
           const endpoint = mutation.commandType.startsWith("field.")
             ? "/api/field-work/commands/v1"
             : "/api/inventory/commands/v1"
-          const response = await fetch(endpoint, {
+          const response = await fetch(sameOriginApiUrl(endpoint, window.location.href), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ commandId: mutation.clientMutationId, commandType: mutation.commandType, siteId: mutation.siteId, payload }),
@@ -152,7 +140,8 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
           if (!response.ok) throw new Error(body.error ?? "A queued action could not be synchronized.")
           await journal.completeMutation(mutation)
         } catch (cause) {
-          const message = cause instanceof Error ? cause.message : "A queued action could not be synchronized."
+          const detail = cause instanceof Error ? cause.message : "The browser could not complete the request."
+          const message = `This queued ${commandLabel(mutation.commandType).toLowerCase()} could not sync. ${detail}`
           await journal.markBlocked(mutation, message)
           setSyncError(message)
           break

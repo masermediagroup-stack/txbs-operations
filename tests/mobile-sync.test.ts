@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { MobileCacheManifest, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import type { MobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { buildQueuedMutation, formatBytes, MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
+import { prepareQueuedCommandPayload, queuedPhotoFormData, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
 
 const siteId = "10000000-0000-4000-8000-000000000001"
 const lotId = "10000000-0000-4000-8000-000000000002"
@@ -87,5 +88,41 @@ describe("Phase 7 mobile sync journal", () => {
     expect(formatBytes(0)).toBe("0 MB")
     expect(formatBytes(1.5 * 1024 * 1024)).toBe("1.5 MB")
     expect(formatBytes(25.4 * 1024 * 1024)).toBe("25 MB")
+  })
+
+  it("rebuilds a queued photo as Safari-safe multipart data", () => {
+    const photo: QueuedPhoto = {
+      id: mutationId,
+      mutationId,
+      fieldPath: "files[0]",
+      fileName: "IMG 1001 (yard).jpg",
+      contentType: "image/jpeg",
+      size: 5,
+      createdAt: "2026-08-25T13:56:00.000Z",
+      state: "pending",
+      retryCount: 0,
+      lastError: null,
+      blob: new Blob(["photo"], { type: "image/jpeg" }),
+    }
+
+    const form = queuedPhotoFormData(photo, mutationId, siteId)
+    const file = form.get("file")
+    expect(file).toBeInstanceOf(File)
+    expect((file as File).name).toBe("IMG-1001-yard-.jpg")
+    expect((file as File).type).toBe("image/jpeg")
+    expect(sameOriginApiUrl("/api/inventory/uploads", "https://tbs.example/inventory/movements")).toBe("https://tbs.example/api/inventory/uploads")
+  })
+
+  it("maps queued Movement photos to the shared command contract", () => {
+    const upload = { id: mutationId, fileName: "move.jpg" }
+    const payload = prepareQueuedCommandPayload("movement.create", {
+      reason: "Clear access",
+      note: "Moved with proof",
+      photoType: "Location",
+      files: [{ queuedPhotoId: mutationId }],
+      lines: [{ lotId, quantity: 1, expectedVersion: 4 }],
+    }, new Map([[mutationId, upload]]))
+
+    expect(payload.photoUploads).toEqual([{ ...upload, photoType: "Location", caption: "Moved with proof" }])
   })
 })

@@ -51,16 +51,42 @@ test("an offline movement is retained and visibly queued on the device", async (
   await actionSurface.getByLabel("Destination location").selectOption({ label: destination })
   await actionSurface.getByLabel("Movement reason").fill("Offline field move")
   await actionSurface.getByLabel("Operator name").fill("Offline Operator")
+  const photoInput = isDesktop
+    ? actionSurface.getByLabel("Proof photo")
+    : actionSurface.getByLabel("Add movement photos 1 of 3")
+  await photoInput.setInputFiles({ name: "offline-yard-proof.jpg", mimeType: "image/jpeg", buffer: Buffer.from("offline yard proof") })
   await actionSurface.getByRole("button", { name: "Move 1 lot" }).click()
 
-  await expect(actionSurface.getByText("1 material lot saved on this device and queued for shared sync.")).toBeVisible()
-  if (!isDesktop) await page.keyboard.press("Escape")
+  if (isDesktop) {
+    await expect(actionSurface.getByText("1 material lot saved on this device and queued for shared sync.")).toBeVisible()
+  } else {
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+    await expect(page.locator('[role="alert"]:visible').filter({ hasText: "1 material lot saved on this device and queued for shared sync." })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toBeVisible()
+  }
   await page.getByTestId("sync-status-trigger").click()
   const sheet = page.getByRole("dialog")
   await expect(sheet.getByText("Move material", { exact: true })).toBeVisible()
   await expect(sheet.getByText("Offline Operator")).toBeVisible()
+  await expect(sheet.getByText("1 photo retained")).toBeVisible()
   await expect(sheet.getByRole("button", { name: "Sync now" })).toBeDisabled()
+
+  const replay = { command: null as { payload?: { photoUploads?: unknown[] } } | null }
+  await page.route("**/api/inventory/uploads", async (route) => {
+    expect(route.request().headers()["content-type"]).toContain("multipart/form-data")
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ id: "10000000-0000-4000-8000-000000000099", fileName: "offline-yard-proof.jpg" }),
+    })
+  })
+  await page.route("**/api/inventory/commands/v1", async (route) => {
+    replay.command = route.request().postDataJSON() as { payload?: { photoUploads?: unknown[] } }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ entityId: "10000000-0000-4000-8000-000000000098" }) })
+  })
   await context.setOffline(false)
+  await expect(sheet.getByText("No local-only actions")).toBeVisible()
+  expect(replay.command?.payload?.photoUploads).toHaveLength(1)
 })
 
 test("offline fallback explains how to continue safely", async ({ page }) => {

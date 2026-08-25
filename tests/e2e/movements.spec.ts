@@ -47,10 +47,15 @@ test("moves a selected lot and preserves a reversible history event", async ({
   else for (const [index, file] of photoFiles.entries()) await actionSurface.getByLabel(`Add movement photos ${index + 1} of 3`).setInputFiles(file);
   await actionSurface.getByRole("button", { name: "Move 1 lot" }).click();
 
-  await expect(
-    actionSurface.getByText("1 material lot moved and recorded."),
-  ).toBeVisible();
-  if (!isDesktop) await page.keyboard.press("Escape");
+  if (isDesktop) {
+    await expect(
+      actionSurface.getByText("1 material lot moved and recorded."),
+    ).toBeVisible();
+  } else {
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator('[role="alert"]:visible').filter({ hasText: "1 material lot moved and recorded." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toBeVisible();
+  }
   const history = page
     .locator("article")
     .filter({ has: page.getByRole("heading", { name: "E2E staging move" }) });

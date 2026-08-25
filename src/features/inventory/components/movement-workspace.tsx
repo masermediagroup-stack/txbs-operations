@@ -485,6 +485,7 @@ export function MovementWorkspace() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const activeLots = useMemo(
@@ -573,10 +574,12 @@ export function MovementWorkspace() {
         : `${selectedLots.length} material lot${selectedLots.length === 1 ? "" : "s"} saved on this device and queued for shared sync.`);
       setSelected({});
       setQuantities({});
+      setDestinationId("");
       setReason("");
       setNote("");
       const photoInput = formElement.elements.namedItem("movementPhoto");
       if (photoInput instanceof HTMLInputElement) photoInput.value = "";
+      setReviewOpen(false);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Material could not be moved.",
@@ -830,8 +833,15 @@ export function MovementWorkspace() {
           </CardContent>
         </Card>
 
-        <div className="sticky bottom-2 z-30 lg:hidden">
-          <Sheet>
+        <div className="sticky bottom-2 z-30 flex flex-col gap-2 lg:hidden">
+          {message ? (
+            <Alert className="bg-card shadow-lg">
+              <CheckCircle2 aria-hidden="true" />
+              <AlertTitle>Movement recorded</AlertTitle>
+              <AlertDescription>{message} Movement history below has been updated.</AlertDescription>
+            </Alert>
+          ) : null}
+          <Sheet open={reviewOpen} onOpenChange={setReviewOpen}>
             <SheetTrigger render={<Button type="button" size="lg" className="h-12 w-full shadow-lg" disabled={!selectedLots.length} />}><MoveRight aria-hidden="true" />Review move ({selectedLots.length})</SheetTrigger>
             <SheetContent side="bottom" className="h-[94dvh] rounded-t-2xl">
               <SheetHeader className="relative border-b"><span aria-hidden="true" className="absolute inset-x-0 -bottom-px h-1 bg-brand-orange" /><SheetTitle>Review selected material</SheetTitle><SheetDescription>Confirm quantities, one destination, and movement evidence.</SheetDescription></SheetHeader>
@@ -1101,7 +1111,7 @@ export function MovementWorkspace() {
         </form>
       </div>
 
-      <Card>
+      <Card id="movement-history">
         <CardHeader className="border-b-0 sm:border-b">
           <CardTitle>Movement history</CardTitle>
           <CardDescription>
