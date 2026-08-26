@@ -5,7 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { MobileCommandType, QueueMutationInput, QueuedActor, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import { IndexedDbMobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
-import { prepareQueuedCommandPayload, queuedPhotoRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { prepareQueuedCommandPayload, queuedPhotoTicketRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 
 const SYNC_TAG = "tbs-operations-sync"
 
@@ -107,11 +108,15 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
         const uploadById = new Map<string, { id: string; fileName: string }>()
         try {
           for (const photo of mutationPhotos) {
-            const upload = queuedPhotoRequest(photo, mutation.clientMutationId, mutation.siteId, window.location.href)
-            const response = await fetch(upload.url, upload.init)
-            const body = await response.json().catch(() => ({ error: `The queued photo upload returned HTTP ${response.status}.` })) as { id?: string; fileName?: string; error?: string }
-            if (!response.ok || !body.id || !body.fileName) throw new Error(body.error ?? "A queued photo could not be uploaded.")
-            uploadById.set(photo.id, { id: body.id, fileName: body.fileName })
+            const ticketRequest = await queuedPhotoTicketRequest(photo, mutation.clientMutationId, mutation.siteId, window.location.href)
+            const response = await fetch(ticketRequest.url, ticketRequest.init)
+            const ticket = await response.json().catch(() => ({ error: `The queued photo ticket returned HTTP ${response.status}.` })) as { id?: string; fileName?: string; objectPath?: string; token?: string; upsert?: boolean; error?: string }
+            if (!response.ok || !ticket.id || !ticket.fileName || !ticket.objectPath || !ticket.token) throw new Error(ticket.error ?? "A queued photo ticket could not be created.")
+            const { error: uploadError } = await createSupabaseClient().storage
+              .from("operational-media")
+              .uploadToSignedUrl(ticket.objectPath, ticket.token, ticketRequest.bytes, { contentType: photo.contentType, upsert: ticket.upsert ?? false })
+            if (uploadError) throw new Error(uploadError.message)
+            uploadById.set(photo.id, { id: ticket.id, fileName: ticket.fileName })
           }
           const payload = prepareQueuedCommandPayload(mutation.commandType, mutation.payload, uploadById)
           const endpoint = mutation.commandType.startsWith("field.")

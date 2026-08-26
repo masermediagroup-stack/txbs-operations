@@ -14,28 +14,32 @@ export function sameOriginApiUrl(path: string, currentUrl: string) {
   return new URL(path, currentUrl).href
 }
 
-export function queuedPhotoRequest(photo: QueuedPhoto, commandId: string, siteId: string, currentUrl: string) {
-  const url = new URL("/api/inventory/uploads", currentUrl)
-  url.searchParams.set("commandId", commandId)
-  url.searchParams.set("siteId", siteId)
-  url.searchParams.set("uploadId", photo.id)
-  url.searchParams.set("fileName", safeQueuedFileName(photo.fileName))
+export async function sha256Hex(bytes: ArrayBuffer) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes)
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")
+}
 
-  // iOS WebKit can omit the multipart boundary when a Blob restored from
-  // IndexedDB is appended to FormData. A raw request body avoids multipart
-  // parsing entirely while retaining the same authenticated upload endpoint.
-  const body = photo.blob.type === photo.contentType
-    ? photo.blob
-    : new Blob([photo.blob], { type: photo.contentType })
+export async function queuedPhotoTicketRequest(photo: QueuedPhoto, commandId: string, siteId: string, currentUrl: string) {
+  const bytes = await photo.blob.arrayBuffer()
+  const checksum = await sha256Hex(bytes)
   return {
-    url: url.href,
+    bytes,
+    url: sameOriginApiUrl("/api/inventory/uploads", currentUrl),
     init: {
       method: "POST",
       headers: {
-        "Content-Type": photo.contentType,
-        "X-TBS-Queued-Upload": "1",
+        "Content-Type": "application/json",
+        "X-TBS-Queued-Upload": "ticket",
       },
-      body,
+      body: JSON.stringify({
+        commandId,
+        siteId,
+        uploadId: photo.id,
+        fileName: safeQueuedFileName(photo.fileName),
+        contentType: photo.contentType,
+        size: bytes.byteLength,
+        checksum,
+      }),
     } satisfies RequestInit,
   }
 }

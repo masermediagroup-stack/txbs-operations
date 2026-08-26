@@ -73,14 +73,25 @@ test("an offline movement is retained and visibly queued on the device", async (
 
   const replay = { command: null as { payload?: { photoUploads?: unknown[] } } | null }
   await page.route("**/api/inventory/uploads", async (route) => {
-    expect(route.request().headers()["content-type"]).toBe("image/jpeg")
-    expect(route.request().headers()["x-tbs-queued-upload"]).toBe("1")
-    expect(route.request().postDataBuffer()?.toString()).toBe("offline yard proof")
+    expect(route.request().headers()["content-type"]).toBe("application/json")
+    expect(route.request().headers()["x-tbs-queued-upload"]).toBe("ticket")
+    expect(route.request().postDataJSON()).toMatchObject({ fileName: "offline-yard-proof.jpg", contentType: "image/jpeg" })
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ id: "10000000-0000-4000-8000-000000000099", fileName: "offline-yard-proof.jpg" }),
+      body: JSON.stringify({
+        id: "10000000-0000-4000-8000-000000000099",
+        fileName: "offline-yard-proof.jpg",
+        objectPath: "10000000-0000-4000-8000-000000000001/test/offline-yard-proof.jpg",
+        token: "signed-upload-token",
+        upsert: false,
+      }),
     })
+  })
+  await page.route("**/storage/v1/object/upload/sign/**", async (route) => {
+    expect(route.request().headers()["content-type"]).toBe("image/jpeg")
+    expect(route.request().postDataBuffer()?.toString()).toBe("offline yard proof")
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ Key: "operational-media/offline-yard-proof.jpg" }) })
   })
   await page.route("**/api/inventory/commands/v1", async (route) => {
     replay.command = route.request().postDataJSON() as { payload?: { photoUploads?: unknown[] } }

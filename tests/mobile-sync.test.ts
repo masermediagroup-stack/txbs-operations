@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { MobileCacheManifest, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import type { MobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { buildQueuedMutation, formatBytes, MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
-import { prepareQueuedCommandPayload, queuedPhotoRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { prepareQueuedCommandPayload, queuedPhotoTicketRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
 
 const siteId = "10000000-0000-4000-8000-000000000001"
 const lotId = "10000000-0000-4000-8000-000000000002"
@@ -90,7 +90,7 @@ describe("Phase 7 mobile sync journal", () => {
     expect(formatBytes(25.4 * 1024 * 1024)).toBe("25 MB")
   })
 
-  it("rebuilds a queued photo as a Safari-safe raw request", () => {
+  it("requests a small signed-upload ticket instead of sending photo bytes through Vercel", async () => {
     const photo: QueuedPhoto = {
       id: mutationId,
       mutationId,
@@ -105,12 +105,13 @@ describe("Phase 7 mobile sync journal", () => {
       blob: new Blob(["photo"], { type: "image/jpeg" }),
     }
 
-    const request = queuedPhotoRequest(photo, mutationId, siteId, "https://tbs.example/inventory/movements")
-    const url = new URL(request.url)
-    expect(url.pathname).toBe("/api/inventory/uploads")
-    expect(url.searchParams.get("fileName")).toBe("IMG-1001-yard-.jpg")
-    expect(request.init.headers).toMatchObject({ "Content-Type": "image/jpeg", "X-TBS-Queued-Upload": "1" })
-    expect(request.init.body).toBe(photo.blob)
+    const request = await queuedPhotoTicketRequest(photo, mutationId, siteId, "https://tbs.example/inventory/movements")
+    const body = JSON.parse(String(request.init.body))
+    expect(request.url).toBe("https://tbs.example/api/inventory/uploads")
+    expect(request.init.headers).toMatchObject({ "Content-Type": "application/json", "X-TBS-Queued-Upload": "ticket" })
+    expect(request.bytes.byteLength).toBe(5)
+    expect(body).toMatchObject({ fileName: "IMG-1001-yard-.jpg", contentType: "image/jpeg", size: 5 })
+    expect(body.checksum).toMatch(/^[a-f0-9]{64}$/)
     expect(sameOriginApiUrl("/api/inventory/uploads", "https://tbs.example/inventory/movements")).toBe("https://tbs.example/api/inventory/uploads")
   })
 
