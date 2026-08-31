@@ -3,6 +3,7 @@ import { ZodError } from "zod"
 
 import { parseInventoryCommand } from "@/features/inventory/domain/shared-command"
 import { getCurrentOperator } from "@/features/auth/server/session"
+import { dispatchReceiptNotifications } from "@/features/notifications/server/receipt-notifications"
 import type { Json } from "@/lib/supabase/database.types"
 import { createClient } from "@/lib/supabase/server"
 
@@ -40,6 +41,15 @@ export async function POST(request: Request) {
         { error: error.message, code: error.code },
         { status, headers: { "Cache-Control": "private, no-store" } },
       )
+    }
+
+    if (command.commandType === "receipt.complete" && "receiptId" in command.payload && typeof command.payload.receiptId === "string") {
+      try {
+        await dispatchReceiptNotifications(supabase, command.payload.receiptId)
+      } catch (notificationError) {
+        // The durable outbox remains retryable; email must never undo a completed receipt.
+        console.error("Receipt notification dispatch failed", notificationError)
+      }
     }
 
     return NextResponse.json(data, { headers: { "Cache-Control": "private, no-store" } })

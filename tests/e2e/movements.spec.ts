@@ -49,7 +49,7 @@ test("moves a selected lot and preserves a reversible history event", async ({
 
   if (isDesktop) {
     await expect(
-      actionSurface.getByText("1 material lot moved and recorded."),
+      actionSurface.getByText("1 material lot moved and recorded.", { exact: true }),
     ).toBeVisible();
   } else {
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -76,6 +76,9 @@ test("moves a selected lot and preserves a reversible history event", async ({
   await expect(details).toContainText(expectedSource);
   await expect(details).toContainText(locationFromOption(destination));
   await expect(details).toContainText("Material moved");
+  await expect(details.getByRole("heading", { name: "Movement photos" })).toBeVisible();
+  await expect(details.getByRole("img", { name: /Movement photo/ })).toHaveCount(3);
+  await expect(details.getByRole("link", { name: /Open full-size movement photo/ })).toHaveCount(3);
 });
 
 test("movement workspace is accessible on a mobile viewport", async ({

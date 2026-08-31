@@ -51,6 +51,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useInventory } from "@/features/inventory/components/inventory-provider";
 import { RecordIssueSheet } from "@/features/inventory/components/issue-actions";
 import { PhotoUploadSlots } from "@/features/inventory/components/photo-upload-slots";
+import { PrivatePhotoGallery } from "@/features/inventory/components/private-photo-gallery";
 import {
   positionPrecisions,
   type InventorySnapshot,
@@ -342,6 +343,31 @@ function MovementDetailSheet({
                 })}
               </div>
             </section>
+
+            {movementPhotos.length ? (
+              <section aria-labelledby={`movement-photos-${movement.id}`}>
+                <div className="mb-3 flex items-center gap-2">
+                  <Camera
+                    aria-hidden="true"
+                    className="size-5 text-brand-blue"
+                  />
+                  <h3
+                    id={`movement-photos-${movement.id}`}
+                    className="font-semibold"
+                  >
+                    Movement photos
+                  </h3>
+                  <Badge variant="secondary">{movementPhotos.length}</Badge>
+                </div>
+                <PrivatePhotoGallery
+                  records={movementPhotos}
+                  altPrefix="Movement photo"
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Select a photo to open the full-size private image.
+                </p>
+              </section>
+            ) : null}
           </div>
         </div>
       </SheetContent>

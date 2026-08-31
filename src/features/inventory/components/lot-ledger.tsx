@@ -11,12 +11,11 @@ import type { InventorySnapshot, MaterialLot } from "@/features/inventory/domain
 import { RecordIssueSheet } from "@/features/inventory/components/issue-actions"
 import { VerifyLotSheet } from "@/features/inventory/components/lot-actions"
 
-function LotFacts({ lot, snapshot }: { lot: MaterialLot; snapshot: InventorySnapshot }) {
+function LotFacts({ lot, snapshot, verificationLabel }: { lot: MaterialLot; snapshot: InventorySnapshot; verificationLabel: string }) {
   const location = snapshot.locations.find((item) => item.id === lot.locationId)
-  const verification = lotVerificationState(snapshot, lot)
   return <>
     <div className="flex flex-wrap items-center gap-1.5">
-      <Badge variant={verification.label === "Verified" ? "secondary" : "outline"}>{verification.label}</Badge>
+      {verificationLabel !== "Verified" ? <Badge variant="outline">{verificationLabel}</Badge> : null}
       <Badge variant="outline">{lot.condition}</Badge>
       <Badge variant="outline">{lot.protection}</Badge>
       <Badge variant="outline">{lot.accessibility}</Badge>
@@ -32,15 +31,20 @@ export function LotLedger({ lots, snapshot }: { lots: MaterialLot[]; snapshot: I
   return <div className="flex flex-col gap-3">
     {lots.map((lot) => {
       const group = snapshot.groups.find((item) => item.id === lot.groupId)
+      const verification = lotVerificationState(snapshot, lot)
       return <article id={`material-lot-${lot.id}`} key={lot.id} className="scroll-mt-24 overflow-hidden rounded-xl border bg-card target:ring-2 target:ring-primary/45 target:ring-offset-2">
         <div className="flex flex-col gap-4 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0"><h3 className="font-semibold">{group?.name ?? "Material lot"}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{group?.description}</p></div>
-            <div className="shrink-0"><VerifyLotSheet lot={lot} /></div>
+            <div className="shrink-0">
+              {verification.label === "Verified"
+                ? <Badge className="bg-brand-orange text-white">Verified</Badge>
+                : <VerifyLotSheet lot={lot} />}
+            </div>
           </div>
           <div className="grid gap-4 border-t pt-4 sm:grid-cols-[minmax(8rem,.55fr)_minmax(13rem,1.45fr)] sm:items-start">
             <div><p className="font-mono text-lg font-semibold tabular-nums">{lot.quantity ?? "Unknown"}</p><p className="text-xs text-muted-foreground">{lot.packageType}{lot.quantity === 1 ? "" : " packages"}</p></div>
-            <div className="flex flex-col gap-2"><LotFacts lot={lot} snapshot={snapshot} /></div>
+            <div className="flex flex-col gap-2"><LotFacts lot={lot} snapshot={snapshot} verificationLabel={verification.label} /></div>
           </div>
           <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:justify-end"><Button nativeButton={false} render={<Link href={`/inventory/movements?lot=${lot.id}`} />} variant="outline"><MoveRight aria-hidden="true" data-icon="inline-start" />Move material</Button><RecordIssueSheet projectId={lot.projectId} lotId={lot.id} /></div>
         </div>

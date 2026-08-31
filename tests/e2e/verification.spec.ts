@@ -16,6 +16,10 @@ test("verification worklist provides a direct per-material workflow", async ({ p
   const targetId = await page.evaluate(() => window.location.hash.slice(1));
   const targetedLot = page.locator(`#${targetId}`);
   await expect(targetedLot).toBeVisible();
+  const materialName = await targetedLot.getByRole("heading", { level: 3 }).innerText();
+  const materialSlug = materialName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const storageHref = await targetedLot.locator('a[href^="/inventory/storage/"]').getAttribute("href");
+  await expect(targetedLot.getByRole("button", { name: "Verify material" })).toBeVisible();
   await targetedLot.getByRole("button", { name: "Verify material" }).click();
 
   const sheet = page.getByRole("dialog", { name: "Verify material" });
@@ -23,6 +27,22 @@ test("verification worklist provides a direct per-material workflow", async ({ p
   await sheet.getByLabel("Operator name").fill("Verification E2E");
   await sheet.getByRole("button", { name: "Save verification" }).click();
   await expect(sheet).toBeHidden();
+
+  const verifiedProjectLot = page.locator(`#${targetId}`);
+  const projectVerifiedBadge = verifiedProjectLot.getByText("Verified", { exact: true });
+  await expect(projectVerifiedBadge).toBeVisible();
+  await expect(projectVerifiedBadge).toHaveClass(/bg-brand-orange/);
+  await expect(verifiedProjectLot.getByRole("button", { name: "Verify material" })).toHaveCount(0);
+
+  for (const href of [`/inventory/materials/${materialSlug}`, storageHref]) {
+    expect(href).toBeTruthy();
+    await page.goto(href!);
+    const sharedLedgerLot = page.locator(`#${targetId}`);
+    const sharedVerifiedBadge = sharedLedgerLot.getByText("Verified", { exact: true });
+    await expect(sharedVerifiedBadge).toBeVisible();
+    await expect(sharedVerifiedBadge).toHaveClass(/bg-brand-orange/);
+    await expect(sharedLedgerLot.getByRole("button", { name: "Verify material" })).toHaveCount(0);
+  }
 
   await page.goto("/reports#material-verification-worklist");
   const recordSelector = (page.viewportSize()?.width ?? 0) >= 1024 ? "tr" : "article";

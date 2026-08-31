@@ -1565,6 +1565,23 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_list_receiving_notifications_v1: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_upsert_receiving_notification_recipient_v1: {
+        Args: {
+          p_active: boolean
+          p_display_name: string
+          p_email: string
+          p_id: string | null
+        }
+        Returns: string
+      }
+      claim_receipt_notifications_v1: {
+        Args: { p_receipt_id: string }
+        Returns: Json
+      }
       execute_inventory_command_v1: {
         Args: {
           p_command_id: string
@@ -1586,6 +1603,15 @@ export type Database = {
       get_field_work_snapshot_v1: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      finish_receipt_notification_v1: {
+        Args: {
+          p_delivery_id: string
+          p_error: string | null
+          p_provider_message_id: string | null
+          p_status: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

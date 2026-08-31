@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
-import { useEffect, useId, useState, type FormEvent } from "react"
+import { useId, useState, type FormEvent } from "react"
 import { AlertCircle, ArrowLeft, Camera, CheckCircle2, ClipboardList, Link2, MessageSquare, UserRound } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -16,8 +15,9 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/features/inventory/components/inventory-provider"
+import { PrivatePhotoGallery } from "@/features/inventory/components/private-photo-gallery"
 import { issueEvidenceState, isIssueActive } from "@/features/inventory/domain/selectors"
-import type { Issue, IssueStatus, PhotoRecord } from "@/features/inventory/domain/inventory"
+import type { Issue, IssueStatus } from "@/features/inventory/domain/inventory"
 
 const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })
 
@@ -29,22 +29,6 @@ function statusVariant(status: IssueStatus) {
   if (status === "Dismissed") return "outline" as const
   if (status === "In Progress") return "default" as const
   return "destructive" as const
-}
-
-function EvidenceImage({ record }: { record: PhotoRecord }) {
-  const { getPhoto } = useInventory()
-  const [url, setUrl] = useState("")
-  useEffect(() => {
-    let active = true
-    let objectUrl = ""
-    getPhoto(record.blobKey).then((blob) => {
-      if (!active || !blob) return
-      objectUrl = URL.createObjectURL(blob)
-      setUrl(objectUrl)
-    })
-    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl) }
-  }, [getPhoto, record.blobKey])
-  return <figure className="overflow-hidden rounded-xl border bg-muted/35">{url ? <Image src={url} alt={record.caption || `Issue evidence: ${record.fileName}`} width={640} height={420} unoptimized className="aspect-[4/3] w-full object-cover" /> : <div className="flex aspect-[4/3] items-center justify-center text-sm text-muted-foreground">Loading photo…</div>}<figcaption className="p-3"><p className="truncate font-medium">{record.fileName}</p><p className="mt-0.5 text-xs text-muted-foreground">{record.caption || record.type} · {record.operatorName}</p></figcaption></figure>
 }
 
 function AssignmentForm({ issue }: { issue: Issue }) {
@@ -116,7 +100,7 @@ export function IssueWorkspace({ issueId }: { issueId: string }) {
 
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
       <div className="flex flex-col gap-6">
-        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Camera aria-hidden="true" />Evidence</CardTitle><CardDescription>{issue.type === "Damaged" ? "Damage evidence remains attached through assignment, return follow-up, resolution, and reopening." : "Optional photos attached to this Issue and its follow-up."}</CardDescription></CardHeader><CardContent>{photos.length ? <div className="grid gap-3 sm:grid-cols-2">{photos.map((record) => <EvidenceImage key={record.id} record={record} />)}</div> : <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><Camera /></EmptyMedia><EmptyTitle>No photo evidence</EmptyTitle><EmptyDescription>{issue.type === "Damaged" ? "Add a damage photo before completing this Issue." : "Photos are optional for this Issue type."}</EmptyDescription></EmptyHeader></Empty>}</CardContent></Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Camera aria-hidden="true" />Evidence</CardTitle><CardDescription>{issue.type === "Damaged" ? "Damage evidence remains attached through assignment, return follow-up, resolution, and reopening." : "Optional photos attached to this Issue and its follow-up."}</CardDescription></CardHeader><CardContent>{photos.length ? <PrivatePhotoGallery records={photos} altPrefix="Issue evidence photo" className="sm:grid-cols-2" /> : <Empty className="border"><EmptyHeader><EmptyMedia variant="icon"><Camera /></EmptyMedia><EmptyTitle>No photo evidence</EmptyTitle><EmptyDescription>{issue.type === "Damaged" ? "Add a damage photo before completing this Issue." : "Photos are optional for this Issue type."}</EmptyDescription></EmptyHeader></Empty>}</CardContent></Card>
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><ClipboardList aria-hidden="true" />Issue history</CardTitle><CardDescription>Comments and lifecycle transitions are append-only.</CardDescription></CardHeader><CardContent><ol className="flex flex-col gap-3">{history.map((item) => <li key={`${item.label}-${item.id}`} className="border-l-2 border-l-brand-orange pl-3"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{item.label}</Badge><time className="text-xs text-muted-foreground" dateTime={item.at}>{formatter.format(new Date(item.at))}</time></div><p className="mt-1 text-sm font-medium">{item.text}</p><p className="mt-0.5 text-xs text-muted-foreground">{item.operatorName}</p></li>)}</ol></CardContent></Card>
         <Card><CardHeader><CardTitle>Follow-up</CardTitle><CardDescription>Add operational notes or evidence. Supplier-return preparation belongs here; vendor claims and shipping do not.</CardDescription></CardHeader><CardContent><CommentForm issue={issue} /></CardContent></Card>
       </div>

@@ -354,7 +354,7 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
     [report.rows, sortColumn, sortDirection],
   );
   const activeIssues = reports.issues.filter((row) => row.status === "Open" || row.status === "In Progress").length;
-  const verificationActions = reports.verification.filter((row) => row.state !== "Verified").length;
+  const materialsToVerify = reports.verification.filter((row) => row.state !== "Verified").length;
   const readyProjects = reports.readiness.filter((row) => row.readiness === "Ready").length;
   const selectedCategory = categories.find((item) => item.id === category)!;
 
@@ -423,7 +423,7 @@ export function ReportsWorkspace({ role }: { role: "Operator" | "Tech" }) {
         <CardContent className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[
             ["Present lots", reports.materialAge.length],
-            ["Verification actions", verificationActions],
+            ["Materials to verify", materialsToVerify],
             ["Active Issues", activeIssues],
             ["Ready projects", readyProjects],
           ].map(([label, value]) => (
