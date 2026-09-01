@@ -335,7 +335,7 @@ export function ReceivingWorkspace() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field>
                     <FieldLabel htmlFor="receiptNumber">
-                      Receipt or packing-slip number
+                      Order or packing-slip number
                     </FieldLabel>
                     <Input
                       id="receiptNumber"

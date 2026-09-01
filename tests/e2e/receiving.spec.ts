@@ -9,7 +9,7 @@ const evidencePhotos = [
 
 test("known-project receiving creates a durable material lot", async ({ page }, testInfo) => {
   await page.goto("/inventory/receiving");
-  await page.getByLabel("Receipt or packing-slip number").fill("E2E-RCV-100");
+  await page.getByLabel("Order or packing-slip number").fill("E2E-RCV-100");
   await page.getByLabel("Handwritten project text").fill("Allen ISD");
   await page.getByLabel("Matched project").selectOption({ label: "Allen ISD" });
   await page.getByLabel("Inspection result").selectOption("Passed");
@@ -61,7 +61,7 @@ test("receiving requires line photos while allowing a photo-free draft", async (
 }) => {
   await page.goto("/inventory/receiving");
   await page
-    .getByLabel("Receipt or packing-slip number")
+    .getByLabel("Order or packing-slip number")
     .fill("E2E-RCV-PHOTO-RULE");
   await page.getByLabel("Material name").fill("Photo requirement fixture");
   await page.getByLabel("Operator name").fill("Playwright Operator");
@@ -79,7 +79,7 @@ test("receiving requires line photos while allowing a photo-free draft", async (
 
 test("receiving is accessible at the current viewport", async ({ page }) => {
   await page.goto("/inventory/receiving");
-  await expect(page.getByLabel("Receipt or packing-slip number")).toBeVisible();
+  await expect(page.getByLabel("Order or packing-slip number")).toBeVisible();
   await expect(page.locator('input[type="file"][accept="image/*"]')).toHaveCount(7);
   await expect(page.locator('input[type="file"][capture]')).toHaveCount(0);
   const results = await new AxeBuilder({ page })
