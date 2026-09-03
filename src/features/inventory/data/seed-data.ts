@@ -72,6 +72,7 @@ export const inventorySeed: InventorySnapshot = {
     notes: project.notes,
     createdAt: project.activity.at(-1)?.occurredAt ?? project.lastActivity,
     updatedAt: project.lastActivity,
+    version: 1,
   })),
   aliases: [],
   groups: inventoryProjects.flatMap((project, projectIndex) =>

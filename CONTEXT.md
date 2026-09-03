@@ -24,6 +24,10 @@ The precision within a Storage Location. A position is Exact, General, or Unknow
 
 The Inventory record for one customer job/project destination. A Project does not represent multiple job sites. Its official name, aliases, field-label text, job number, and purchase orders can identify it. Its Material Lots may be distributed across multiple TBS inventory Sites and remain one Project rather than being duplicated per storage Site. Project status describes the job’s operational stage and is separate from material presence or readiness.
 
+### Project Stage
+
+The Operator-maintained lifecycle marker for an Inventory Project: `Ordered`, `Shipped`, `Received`, `Stored`, `Ready for Delivery`, `Delivered`, or `Installed`. `Shipped` means the supplier reports material moving toward TBS; `Delivered` means TBS material reached the customer job site. A stage change never moves Material Lots or replaces Receiving, Project Readiness, Outbound Batch, delivery, or installation records.
+
 ### Project Alias
 
 An alternate project name used by TBS staff. An alias does not replace the official project name.

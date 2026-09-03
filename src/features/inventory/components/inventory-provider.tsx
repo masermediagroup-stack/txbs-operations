@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { InventorySnapshot } from "@/features/inventory/domain/inventory"
 import { IndexedDbInventoryPersistence } from "@/features/inventory/repositories/indexeddb-inventory-persistence"
-import { createInventoryService, type AddIssueCommentInput, type AddMaterialInput, type AssignIssueInput, type CancelOutboundBatchInput, type CreateOutboundBatchInput, type DepartOutboundBatchInput, type MarkOutboundReadyInput, type MoveMaterialInput, type RecordIssueInput, type ReverseMovementInput, type ReverseOutboundBatchInput, type SaveReceiptDraftInput, type TransitionIssueInput, type VerifyLotInput } from "@/features/inventory/services/inventory-service"
+import { createInventoryService, type AddIssueCommentInput, type AddMaterialInput, type AssignIssueInput, type CancelOutboundBatchInput, type CreateOutboundBatchInput, type DepartOutboundBatchInput, type MarkOutboundReadyInput, type MoveMaterialInput, type RecordIssueInput, type ReverseMovementInput, type ReverseOutboundBatchInput, type SaveReceiptDraftInput, type TransitionIssueInput, type UpdateProjectStatusInput, type VerifyLotInput } from "@/features/inventory/services/inventory-service"
 import { createRemoteInventoryService } from "@/features/inventory/services/remote-inventory-service"
 import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
 
@@ -21,6 +21,7 @@ export function initialInventorySnapshot(backend: "local" | "supabase", seed: In
 type InventoryContextValue = {
   snapshot: InventorySnapshot
   isHydrating: boolean
+  updateProjectStatus(input: UpdateProjectStatusInput): Promise<void>
   addMaterial(input: AddMaterialInput): Promise<void>
   verifyLot(input: VerifyLotInput): Promise<void>
   recordIssue(input: RecordIssueInput): Promise<void>
@@ -85,6 +86,18 @@ function InventoryState({ seed, backend, children }: { seed: InventorySnapshot; 
   const value = useMemo<InventoryContextValue>(() => ({
     snapshot,
     isHydrating: query.isFetching && snapshot.revision === 0,
+    updateProjectStatus: async (input) => {
+      const project = snapshot.projects.find((item) => item.id === input.projectId)
+      await apply(service.updateProjectStatus(input))
+      if (project) await queueOffline({
+        clientMutationId: input.clientMutationId,
+        commandType: "project.status.update",
+        siteId: project.siteId,
+        entityIds: [project.id],
+        entityBaseVersions: { [project.id]: input.expectedVersion },
+        payload: input as unknown as Record<string, unknown>,
+      })
+    },
     addMaterial: async (input) => {
       const project = snapshot.projects.find((item) => item.id === input.projectId)
       await apply(service.addMaterial(input))

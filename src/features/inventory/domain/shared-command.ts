@@ -10,6 +10,7 @@ import {
   photoTypes,
   positionPrecisions,
   protectionStates,
+  projectStatuses,
 } from "@/features/inventory/domain/inventory"
 
 const uuid = z.string().uuid()
@@ -35,6 +36,12 @@ const lotLine = z.object({
 })
 
 const schemas = {
+  "project.status.update": z.object({
+    projectId: uuid,
+    status: z.enum(projectStatuses),
+    expectedVersion: z.number().int().positive(),
+    note: z.string().max(2000),
+  }),
   "material.add": z.object({
     projectId: uuid,
     materialName: z.string().trim().min(1),

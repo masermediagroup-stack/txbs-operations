@@ -16,6 +16,7 @@ import type {
   ReverseOutboundBatchInput,
   SaveReceiptDraftInput,
   TransitionIssueInput,
+  UpdateProjectStatusInput,
   VerifyLotInput,
 } from "@/features/inventory/services/inventory-service"
 
@@ -101,6 +102,16 @@ export function createRemoteInventoryService(getSnapshot: () => InventorySnapsho
       if (response.status === 404) return null
       if (!response.ok) throw new Error("Photo could not be opened.")
       return response.blob()
+    },
+    async updateProjectStatus(input: UpdateProjectStatusInput) {
+      const project = required(getSnapshot().projects.find((item) => item.id === input.projectId), "Project not found.")
+      await executeCommand(commandId(input.clientMutationId), "project.status.update", project.siteId, {
+        projectId: input.projectId,
+        status: input.status,
+        expectedVersion: input.expectedVersion,
+        note: input.note,
+      })
+      return refresh()
     },
     async addMaterial(input: AddMaterialInput) {
       const project = required(getSnapshot().projects.find((item) => item.id === input.projectId), "Project not found.")

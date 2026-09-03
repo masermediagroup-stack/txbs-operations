@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { AddMaterialSheet } from "@/features/inventory/components/lot-actions"
 import { RecordIssueSheet } from "@/features/inventory/components/issue-actions"
 import { LotLedger } from "@/features/inventory/components/lot-ledger"
+import { ProjectStatusAction } from "@/features/inventory/components/project-status-action"
 import { StatusBadge } from "@/features/inventory/components/status-badge"
 import { useInventory } from "@/features/inventory/components/inventory-provider"
 import { projectLots, projectPackageTotal, projectReadiness } from "@/features/inventory/domain/selectors"
@@ -34,7 +35,7 @@ export function ProjectWorkspace({ slug }: { slug: string }) {
       <CardHeader className="border-b">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div><div className="flex flex-wrap items-center gap-2"><CardTitle className="text-xl">{project.name}</CardTitle><StatusBadge status={project.status} /></div><CardDescription className="mt-1">Job {project.jobNumber} · {project.purchaseOrders.join(" · ")}{isHydrating ? " · Loading saved device records…" : ""}</CardDescription></div>
-          <div className="flex flex-col gap-2 sm:flex-row"><RecordIssueSheet projectId={project.id} /><AddMaterialSheet projectId={project.id} /></div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><ProjectStatusAction project={project} /><RecordIssueSheet projectId={project.id} /><AddMaterialSheet projectId={project.id} /></div>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

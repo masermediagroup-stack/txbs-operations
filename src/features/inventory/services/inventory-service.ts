@@ -1,4 +1,4 @@
-import { inventorySnapshotSchema, migrateInventorySnapshot, unknownPosition, type AccessibilityState, type ConditionState, type InventorySnapshot, type IssuePriority, type IssueStatus, type IssueType, type MaterialLot, type PackageType, type PhotoRecord, type PhotoType, type PositionPrecision, type ProtectionState, type StoragePosition } from "@/features/inventory/domain/inventory"
+import { inventorySnapshotSchema, migrateInventorySnapshot, unknownPosition, type AccessibilityState, type ConditionState, type InventorySnapshot, type IssuePriority, type IssueStatus, type IssueType, type MaterialLot, type PackageType, type PhotoRecord, type PhotoType, type PositionPrecision, type ProjectStatus, type ProtectionState, type StoragePosition } from "@/features/inventory/domain/inventory"
 import { activeOutboundLines, isIssueActive, lotVerificationState } from "@/features/inventory/domain/selectors"
 import type { InventoryPersistence, PhotoBlob } from "@/features/inventory/repositories/inventory-persistence"
 
@@ -11,6 +11,7 @@ export type AddMaterialInput = OperatorInput & LocationInput & EvidenceInput & {
   projectId: string; materialName: string; description: string; packageType: PackageType; quantity: number | null
   condition: ConditionState; protection: ProtectionState; accessibility: AccessibilityState; handlingRequirements: string[]
 }
+export type UpdateProjectStatusInput = OperatorInput & { projectId: string; status: ProjectStatus; expectedVersion: number; clientMutationId: string; note: string }
 export type VerifyLotInput = OperatorInput & LocationInput & EvidenceInput & { lotId: string; note: string }
 type IssueLinksInput = { projectId: string | null; lotId: string | null; receiptId: string | null; locationId: string | null; movementId: string | null; outboundBatchId: string | null }
 export type RecordIssueInput = OperatorInput & EvidenceInput & IssueLinksInput & { siteId: string; type: IssueType; priority: IssuePriority; title: string; description: string; blocking: boolean; clientMutationId: string }
@@ -146,6 +147,33 @@ export function createInventoryService(persistence: InventoryPersistence, seed: 
   return {
     load: async () => migrateInventorySnapshot(await persistence.load(seed)),
     getPhoto: (key: string) => persistence.getPhoto(key),
+    updateProjectStatus(input: UpdateProjectStatusInput) {
+      return transact((snapshot, now) => {
+        const operatorName = requiredName(input.operatorName)
+        const project = snapshot.projects.find((item) => item.id === input.projectId)
+        if (!project) throw new Error("Project not found.")
+        if (project.version !== input.expectedVersion) throw new Error("Project stage changed after this page loaded. Review the current stage and try again.")
+        if (project.status === input.status) throw new Error(`This project is already ${input.status}.`)
+        const previousStatus = project.status
+        project.status = input.status
+        project.updatedAt = now
+        project.version += 1
+        const note = input.note.trim()
+        if (note.length > 2000) throw new Error("Project stage notes cannot exceed 2,000 characters.")
+        snapshot.activities.push({
+          id: crypto.randomUUID(),
+          siteId: project.siteId,
+          projectId: project.id,
+          entityType: "Project",
+          entityId: project.id,
+          type: "Project stage changed",
+          description: `Project stage changed from ${previousStatus} to ${input.status}.${note ? ` ${note}` : ""}`,
+          occurredAt: now,
+          operatorName,
+        })
+        return { snapshot }
+      })
+    },
     addMaterial(input: AddMaterialInput) {
       return transact((snapshot, now) => {
         const operatorName = requiredName(input.operatorName)

@@ -308,6 +308,7 @@ export function useMobileSync() {
 
 export function commandLabel(commandType: MobileCommandType) {
   const labels: Record<MobileCommandType, string> = {
+    "project.status.update": "Change project stage",
     "material.add": "Add project material",
     "verification.confirm": "Confirm material",
     "receipt.save-draft": "Save receiving draft",

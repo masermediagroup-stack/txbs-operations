@@ -15,7 +15,7 @@ describe("yard domain foundation", () => {
     legacy.lots = (legacy.lots as Array<Record<string, unknown>>).map((lot) => { const copy = { ...lot }; delete copy.rootLotId; return copy })
     legacy.photos = (legacy.photos as Array<Record<string, unknown>>).map((photo) => { const copy = { ...photo }; delete copy.movementId; return copy })
     const migrated = migrateInventorySnapshot(legacy)
-    expect(migrated.schemaVersion).toBe(6)
+    expect(migrated.schemaVersion).toBe(7)
     expect(migrated.lots.every((lot) => migrated.lots.some((root) => root.id === lot.rootLotId))).toBe(true)
     expect(migrated.movements).toEqual([])
   })
@@ -73,6 +73,39 @@ describe("yard domain foundation", () => {
     const service = createInventoryService(new MemoryInventoryPersistence(), inventorySeed)
     await expect(service.recordIssue({ siteId: inventorySeed.sites[0].id, projectId: null, lotId: null, receiptId: null, locationId: null, movementId: null, outboundBatchId: null, type: "Custom", priority: "Normal", title: "Test", description: "", blocking: false, operatorName: "", clientMutationId: "issue-missing-operator" })).rejects.toThrow("Operator name is required")
   })
+
+  it("changes a project stage without changing its readiness and records the operator history", async () => {
+    const service = createInventoryService(new MemoryInventoryPersistence(), inventorySeed)
+    const project = inventorySeed.projects[0]
+    const readinessBefore = projectReadiness(inventorySeed, project.id)
+    const updated = await service.updateProjectStatus({
+      projectId: project.id,
+      status: project.status === "Stored" ? "Ready for Delivery" : "Stored",
+      expectedVersion: project.version,
+      clientMutationId: crypto.randomUUID(),
+      note: "Supplier and yard records reviewed.",
+      operatorName: "Tyler Vea",
+    })
+    const updatedProject = updated.projects.find((item) => item.id === project.id)!
+
+    expect(updatedProject.status).not.toBe(project.status)
+    expect(updatedProject.version).toBe(project.version + 1)
+    expect(projectReadiness(updated, project.id)).toEqual(readinessBefore)
+    expect(updated.activities.at(-1)).toMatchObject({
+      projectId: project.id,
+      entityType: "Project",
+      type: "Project stage changed",
+      operatorName: "Tyler Vea",
+    })
+    await expect(service.updateProjectStatus({
+      projectId: project.id,
+      status: "Installed",
+      expectedVersion: project.version,
+      clientMutationId: crypto.randomUUID(),
+      note: "",
+      operatorName: "Tyler Vea",
+    })).rejects.toThrow("Project stage changed after this page loaded")
+  })
 })
 
 describe("project readiness and outbound", () => {
@@ -117,7 +150,7 @@ describe("project readiness and outbound", () => {
       return copy
     })
     const migrated = migrateInventorySnapshot(legacy)
-    expect(migrated.schemaVersion).toBe(6)
+    expect(migrated.schemaVersion).toBe(7)
     expect(migrated.outboundBatches).toEqual([])
     expect(migrated.outboundLines).toEqual([])
   })
@@ -353,7 +386,7 @@ describe("issues and material condition", () => {
 
     const migrated = migrateInventorySnapshot(legacy)
     const issue = migrated.issues[0]
-    expect(migrated.schemaVersion).toBe(6)
+    expect(migrated.schemaVersion).toBe(7)
     expect(issue).toMatchObject({ locationId: null, movementId: null, outboundBatchId: null, photoIds: [], resolutionNote: null })
     expect(issueEvidenceState(migrated, issue)).toBe("Needs evidence")
     expect(migrated.issueTransitions).toEqual([expect.objectContaining({ issueId: issue.id, kind: "Created", toStatus: "Open", operatorName: "Legacy Operator" })])

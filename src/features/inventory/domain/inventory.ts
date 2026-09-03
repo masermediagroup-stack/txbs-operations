@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const INVENTORY_SCHEMA_VERSION = 6 as const
+export const INVENTORY_SCHEMA_VERSION = 7 as const
 export const VERIFICATION_WINDOW_DAYS = 14
 
 export const projectStatuses = ["Ordered", "Shipped", "Received", "Stored", "Ready for Delivery", "Delivered", "Installed"] as const
@@ -38,7 +38,7 @@ export type Site = { id: string; slug: string; name: string; active: boolean }
 export type StorageLocation = { id: string; siteId: string; slug: string; name: string; type: "Conex" | "Outdoor" | "Office" | "Receiving"; zone: string; parentLocationId: string | null; notes: string }
 export type StoragePosition = { precision: PositionPrecision; row: "Front" | "Middle" | "Back" | null; column: "Left" | "Center" | "Right" | null; note: string }
 export type ProjectAlias = { id: string; projectId: string; type: "Alias" | "Field label"; value: string }
-export type InventoryProject = { id: string; siteId: string; slug: string; name: string; jobNumber: string; purchaseOrders: string[]; status: ProjectStatus; notes: string[]; createdAt: string; updatedAt: string }
+export type InventoryProject = { id: string; siteId: string; slug: string; name: string; jobNumber: string; purchaseOrders: string[]; status: ProjectStatus; notes: string[]; createdAt: string; updatedAt: string; version: number }
 export type MaterialGroup = { id: string; projectId: string; name: string; description: string }
 export type MaterialLot = {
   id: string
@@ -63,7 +63,7 @@ export type MaterialLot = {
 }
 export type PhotoRecord = { id: string; siteId: string; projectId: string | null; lotId: string | null; receiptId: string | null; movementId: string | null; outboundBatchId: string | null; issueId: string | null; locationId: string | null; type: PhotoType; caption: string; fileName: string; contentType: string; blobKey: string; takenAt: string; uploadedAt: string; operatorName: string }
 export type VerificationRecord = { id: string; lotId: string; verifiedAt: string; operatorName: string; locationId: string | null; position: StoragePosition; note: string; photoIds: string[] }
-export type ActivityEvent = { id: string; siteId: string; projectId: string | null; entityType: "Project" | "Lot" | "Photo" | "Issue" | "Receipt" | "Movement" | "Outbound"; entityId: string; type: "Seeded" | "Material added" | "Verified" | "Location updated" | "Photo added" | "Issue recorded" | "Issue assigned" | "Issue commented" | "Issue status changed" | "Receipt draft saved" | "Received" | "Material moved" | "Movement reversed" | "Outbound planned" | "Outbound ready" | "Outbound departed" | "Outbound cancelled" | "Outbound reversed"; description: string; occurredAt: string; operatorName: string }
+export type ActivityEvent = { id: string; siteId: string; projectId: string | null; entityType: "Project" | "Lot" | "Photo" | "Issue" | "Receipt" | "Movement" | "Outbound"; entityId: string; type: "Seeded" | "Project stage changed" | "Material added" | "Verified" | "Location updated" | "Photo added" | "Issue recorded" | "Issue assigned" | "Issue commented" | "Issue status changed" | "Receipt draft saved" | "Received" | "Material moved" | "Movement reversed" | "Outbound planned" | "Outbound ready" | "Outbound departed" | "Outbound cancelled" | "Outbound reversed"; description: string; occurredAt: string; operatorName: string }
 export type Issue = {
   id: string
   siteId: string
@@ -134,13 +134,13 @@ export const inventorySnapshotSchema: z.ZodType<InventorySnapshot> = z.object({
   revision: z.number().int().nonnegative(),
   sites: z.array(z.object({ id, slug: z.string(), name: z.string(), active: z.boolean() })),
   locations: z.array(z.object({ id, siteId: id, slug: z.string(), name: z.string(), type: z.enum(["Conex", "Outdoor", "Office", "Receiving"]), zone: z.string(), parentLocationId: id.nullable(), notes: z.string() })),
-  projects: z.array(z.object({ id, siteId: id, slug: z.string(), name: z.string(), jobNumber: z.string(), purchaseOrders: z.array(z.string()), status: z.enum(projectStatuses), notes: z.array(z.string()), createdAt: timestamp, updatedAt: timestamp })),
+  projects: z.array(z.object({ id, siteId: id, slug: z.string(), name: z.string(), jobNumber: z.string(), purchaseOrders: z.array(z.string()), status: z.enum(projectStatuses), notes: z.array(z.string()), createdAt: timestamp, updatedAt: timestamp, version: z.number().int().positive() })),
   aliases: z.array(z.object({ id, projectId: id, type: z.enum(["Alias", "Field label"]), value: z.string() })),
   groups: z.array(z.object({ id, projectId: id, name: z.string(), description: z.string() })),
   lots: z.array(z.object({ id, projectId: id, groupId: id, siteId: id, locationId: id.nullable(), position: positionSchema, packageType: z.enum(packageTypes), quantity: z.number().int().nonnegative().nullable(), presence: z.enum(presenceStates), condition: z.enum(conditionStates), protection: z.enum(protectionStates), accessibility: z.enum(accessibilityStates), handlingRequirements: z.array(z.string()), parentLotId: id.nullable(), rootLotId: id, createdAt: timestamp, updatedAt: timestamp, version: z.number().int().positive(), migrationNote: z.string().optional() })),
   photos: z.array(z.object({ id, siteId: id, projectId: id.nullable(), lotId: id.nullable(), receiptId: id.nullable(), movementId: id.nullable(), outboundBatchId: id.nullable(), issueId: id.nullable(), locationId: id.nullable(), type: z.enum(photoTypes), caption: z.string(), fileName: z.string(), contentType: z.string(), blobKey: z.string(), takenAt: timestamp, uploadedAt: timestamp, operatorName: z.string() })),
   verifications: z.array(z.object({ id, lotId: id, verifiedAt: timestamp, operatorName: z.string(), locationId: id.nullable(), position: positionSchema, note: z.string(), photoIds: z.array(id) })),
-  activities: z.array(z.object({ id, siteId: id, projectId: id.nullable(), entityType: z.enum(["Project", "Lot", "Photo", "Issue", "Receipt", "Movement", "Outbound"]), entityId: id, type: z.enum(["Seeded", "Material added", "Verified", "Location updated", "Photo added", "Issue recorded", "Issue assigned", "Issue commented", "Issue status changed", "Receipt draft saved", "Received", "Material moved", "Movement reversed", "Outbound planned", "Outbound ready", "Outbound departed", "Outbound cancelled", "Outbound reversed"]), description: z.string(), occurredAt: timestamp, operatorName: z.string() })),
+  activities: z.array(z.object({ id, siteId: id, projectId: id.nullable(), entityType: z.enum(["Project", "Lot", "Photo", "Issue", "Receipt", "Movement", "Outbound"]), entityId: id, type: z.enum(["Seeded", "Project stage changed", "Material added", "Verified", "Location updated", "Photo added", "Issue recorded", "Issue assigned", "Issue commented", "Issue status changed", "Receipt draft saved", "Received", "Material moved", "Movement reversed", "Outbound planned", "Outbound ready", "Outbound departed", "Outbound cancelled", "Outbound reversed"]), description: z.string(), occurredAt: timestamp, operatorName: z.string() })),
   issues: z.array(z.object({ id, siteId: id, projectId: id.nullable(), lotId: id.nullable(), receiptId: id.nullable(), locationId: id.nullable(), movementId: id.nullable(), outboundBatchId: id.nullable(), type: z.enum(issueTypes), priority: z.enum(issuePriorities), status: z.enum(issueStatuses), title: z.string(), description: z.string(), blocking: z.boolean(), assigneeName: z.string().nullable(), photoIds: z.array(id), resolutionNote: z.string().nullable(), idempotencyKey: z.string().min(1), createdAt: timestamp, updatedAt: timestamp, operatorName: z.string() })),
   issueComments: z.array(z.object({ id, issueId: id, body: z.string(), photoIds: z.array(id), createdAt: timestamp, operatorName: z.string(), userId: id.nullable() })),
   issueTransitions: z.array(z.object({ id, issueId: id, kind: z.enum(issueTransitionKinds), fromStatus: z.enum(issueStatuses).nullable(), toStatus: z.enum(issueStatuses), note: z.string(), occurredAt: timestamp, operatorName: z.string(), userId: id.nullable() })),
@@ -157,7 +157,12 @@ export function migrateInventorySnapshot(value: unknown): InventorySnapshot {
   const legacy = structuredClone(value) as Record<string, unknown>
   const version = Number(legacy.schemaVersion)
   if (version === INVENTORY_SCHEMA_VERSION) return inventorySnapshotSchema.parse(legacy)
-  if (![1, 2, 3, 4, 5].includes(version)) return inventorySnapshotSchema.parse(legacy)
+  if (![1, 2, 3, 4, 5, 6].includes(version)) return inventorySnapshotSchema.parse(legacy)
+
+  legacy.projects = (legacy.projects as Array<Record<string, unknown>>).map((project) => ({
+    ...project,
+    version: typeof project.version === "number" ? project.version : 1,
+  }))
 
   if (version === 1) {
     legacy.lots = (legacy.lots as Array<Record<string, unknown>>).map((lot) => ({ ...lot, rootLotId: lot.id }))

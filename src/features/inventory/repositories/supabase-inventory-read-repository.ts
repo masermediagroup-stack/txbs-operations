@@ -149,6 +149,7 @@ export async function loadSupabaseInventorySnapshot(
         .map((item) => item.note),
       createdAt: project.created_at,
       updatedAt: project.updated_at,
+      version: project.version,
     })),
     aliases: aliases.map((alias) => ({
       id: alias.id,

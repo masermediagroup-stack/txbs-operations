@@ -4,6 +4,7 @@ export const MOBILE_SYNC_DATABASE_VERSION = 1 as const
 export const MOBILE_COMMAND_VERSION = 1 as const
 
 export const mobileCommandTypes = [
+  "project.status.update",
   "material.add",
   "verification.confirm",
   "receipt.save-draft",
