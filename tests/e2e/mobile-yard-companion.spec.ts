@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
 
@@ -81,6 +83,18 @@ test("an offline movement is retained and visibly queued on the device", async (
   await expect(sheet.getByText("1 photo retained")).toBeVisible()
   await expect(sheet.getByRole("button", { name: "Sync now" })).toBeDisabled()
 
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    sheet.getByRole("button", { name: "Export recovery journal" }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(/^tbs-mobile-journal-\d{4}-\d{2}-\d{2}\.json$/)
+  const archive = JSON.parse(await readFile(await download.path(), "utf8"))
+  expect(archive).toMatchObject({
+    format: "tbs-mobile-journal",
+    mutations: [{ commandType: "movement.create", actor: { displayName: "Offline Operator" }, photoIds: [expect.any(String)] }],
+    photos: [{ fileName: "offline-yard-proof.jpg", base64: Buffer.from("offline yard proof").toString("base64") }],
+  })
+
   const replay = { command: null as { payload?: { photoUploads?: unknown[] } } | null }
   await page.route("**/api/inventory/uploads", async (route) => {
     expect(route.request().headers()["content-type"]).toBe("application/json")
@@ -117,6 +131,17 @@ test("an offline movement is retained and visibly queued on the device", async (
   // Anonymous local-demo work must never replay under a subsequently signed-in account.
   await expect(sheet.getByText("Move material", { exact: true })).toBeVisible()
   expect(replay.command).toBeNull()
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("Export recovery first")
+    await dialog.accept()
+  })
+  await sheet.getByRole("button", { name: "Discard Move material" }).click()
+  await expect(sheet.getByText("No local-only actions")).toBeVisible()
+  await expect(sheet.getByText("1 photo retained")).toHaveCount(0)
+  await page.reload()
+  await page.getByTestId("sync-status-trigger").click()
+  await expect(page.getByRole("dialog").getByText("No local-only actions")).toBeVisible()
 })
 
 test("offline fallback explains how to continue safely", async ({ page }) => {
