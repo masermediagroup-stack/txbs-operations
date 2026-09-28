@@ -72,10 +72,10 @@ src/components/           Shell, shared patterns, and shadcn-owned primitives
 src/features/             Feature-owned domain, data, service, and UI modules
 src/lib/                  Supabase and cross-cutting utilities
 supabase/migrations/      Ordered database, RLS, command, and reporting changes
-docs/roadmap/             Versioned implementation plans and reports
+docs/roadmap/             Historical implementation reports and runbooks
 docs/adr/                 Architecture decisions
 ```
 
 The repository is the source of truth. New work must preserve the existing shell, TBS tokens, route terminology, compact desktop tables, mobile cards/sheets, audit history, Site awareness, and private evidence rules.
 
-See [the system handbook](docs/TBS-OPERATIONS-SYSTEM-HANDBOOK.md), [domain context](CONTEXT.md), and [versioned roadmap](docs/roadmap/README.md).
+See the [development game plan](TODO.md), [system handbook](docs/TBS-OPERATIONS-SYSTEM-HANDBOOK.md), [domain context](CONTEXT.md), and [implementation evidence index](docs/roadmap/README.md).

@@ -28,7 +28,7 @@ test("records a damaged Issue with evidence and preserves its full lifecycle", a
   await page.locator('a[href^="/inventory/issues/"]:visible').filter({ hasText: "E2E cracked glass mirror" }).first().click()
   await expect(page).toHaveURL(/\/inventory\/issues\//)
   await expect(page.getByText("Complete", { exact: true })).toBeVisible()
-  await expect(page.getByAltText("Crack visible at the lower corner during yard inspection.")).toBeVisible()
+  await expect(page.getByAltText("Issue evidence photo 1: mirror-damage.png")).toBeVisible()
 
   const assignment = page.locator('[data-slot="card"]').filter({ hasText: "Names remain historical even after authentication is added." })
   await assignment.getByLabel("Assigned to").fill("Shift Lead")

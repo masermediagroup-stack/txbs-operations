@@ -35,9 +35,19 @@ test("yard sync sheet prepares storage and remains accessible", async ({ page })
   expect(results.violations).toEqual([])
 })
 
-test("an offline movement is retained and visibly queued on the device", async ({ page, context }) => {
+test("an offline movement is retained and visibly queued on the device", async ({ page, context, browserName }) => {
   await page.goto("/inventory/movements")
-  await context.setOffline(true)
+  // Windows WebKit's offline emulator blocks even new Blob(["x"]).arrayBuffer().
+  // Block HTTP and signal browser connectivity instead; retain genuine Blob reads.
+  const emulateHttpOffline = browserName === "webkit" && process.platform === "win32"
+  if (emulateHttpOffline) {
+    await context.route(/^https?:/, (route) => route.abort("internetdisconnected"))
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: false })
+      window.dispatchEvent(new Event("offline"))
+    })
+    expect(await page.evaluate(() => fetch("/api/auth/session").then(() => false, () => true))).toBe(true)
+  } else await context.setOffline(true)
   await expect(page.getByTestId("sync-status-trigger")).toHaveAttribute("aria-label", /Offline/)
 
   const isDesktop = (page.viewportSize()?.width ?? 0) >= 1024
@@ -58,7 +68,7 @@ test("an offline movement is retained and visibly queued on the device", async (
   await actionSurface.getByRole("button", { name: "Move 1 lot" }).click()
 
   if (isDesktop) {
-    await expect(actionSurface.getByText("1 material lot saved on this device and queued for shared sync.")).toBeVisible()
+    await expect(actionSurface.getByText("1 material lot saved on this device and queued for shared sync.", { exact: true })).toBeVisible()
   } else {
     await expect(page.getByRole("dialog")).toHaveCount(0)
     await expect(page.locator('[role="alert"]:visible').filter({ hasText: "1 material lot saved on this device and queued for shared sync." })).toBeVisible()
@@ -97,13 +107,33 @@ test("an offline movement is retained and visibly queued on the device", async (
     replay.command = route.request().postDataJSON() as { payload?: { photoUploads?: unknown[] } }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ entityId: "10000000-0000-4000-8000-000000000098" }) })
   })
-  await context.setOffline(false)
-  await expect(sheet.getByText("No local-only actions")).toBeVisible()
-  expect(replay.command?.payload?.photoUploads).toHaveLength(1)
+  if (emulateHttpOffline) {
+    await context.unroute(/^https?:/)
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
+      window.dispatchEvent(new Event("online"))
+    })
+  } else await context.setOffline(false)
+  // Anonymous local-demo work must never replay under a subsequently signed-in account.
+  await expect(sheet.getByText("Move material", { exact: true })).toBeVisible()
+  expect(replay.command).toBeNull()
 })
 
 test("offline fallback explains how to continue safely", async ({ page }) => {
   await page.goto("/offline")
   await expect(page.getByRole("heading", { name: "You are offline" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Try Inventory again" })).toBeVisible()
+})
+
+test("an offline navigation tap keeps the open Inventory workflow available", async ({ page, context }) => {
+  await page.goto("/inventory/movements")
+  await expect(page.getByRole("heading", { name: "Movements", level: 1 })).toBeVisible()
+  await context.setOffline(true)
+  if ((page.viewportSize()?.width ?? 0) < 768) await page.getByRole("button", { name: "Toggle Sidebar" }).click()
+
+  await page.getByRole("link", { name: "Overview", exact: true }).click()
+
+  await expect(page).toHaveURL(/\/inventory\/movements$/)
+  await expect(page.getByRole("heading", { name: "Movements", level: 1 })).toBeVisible()
+  await expect(page.getByRole("status").filter({ hasText: "Stay on this page while offline" })).toBeVisible()
 })

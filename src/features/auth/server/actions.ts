@@ -4,11 +4,12 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 
 import { createClient } from "@/lib/supabase/server"
+import { safeReturnPath } from "@/features/auth/domain/return-path"
 
 const loginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(8),
-  next: z.string().startsWith("/").optional(),
+  next: z.string().optional(),
 })
 
 export async function loginAction(formData: FormData) {
@@ -27,7 +28,7 @@ export async function loginAction(formData: FormData) {
   })
 
   if (error) redirect("/login?error=invalid-credentials")
-  redirect(parsed.data.next ?? "/")
+  redirect(safeReturnPath(parsed.data.next))
 }
 
 export async function logoutAction() {
@@ -35,4 +36,3 @@ export async function logoutAction() {
   await supabase.auth.signOut()
   redirect("/login")
 }
-

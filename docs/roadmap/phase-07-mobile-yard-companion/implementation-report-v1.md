@@ -1,8 +1,7 @@
 # Phase 7 Implementation Report v1
 
 - Report date: 2026-08-12
-- Source plan: [Phase 7 v1](v1.md)
-- Implementation plan: [implementation-plan-v1.md](implementation-plan-v1.md)
+- Historical plan requirements: consolidated in [`TODO.md`](../../../TODO.md#source-coverage-and-disposition)
 - Status: Implemented; shared server replay activated by Phase 6
 
 ## Implemented behavior

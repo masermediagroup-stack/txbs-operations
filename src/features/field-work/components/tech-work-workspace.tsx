@@ -15,10 +15,12 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import type { FieldAssignment, InstallationOutcome } from "@/features/field-work/domain/field-work"
-import { executeFieldWorkCommand, loadFieldWorkSnapshot, stageFieldPhotos } from "@/features/field-work/services/remote-field-work-service"
+import { executeFieldWorkCommand, stageFieldPhotos } from "@/features/field-work/services/remote-field-work-service"
 import { useInventory } from "@/features/inventory/components/inventory-provider"
 import { PhotoUploadSlots } from "@/features/inventory/components/photo-upload-slots"
 import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
+
+import { loadPreparedFieldWork } from "@/features/field-work/services/field-work-cache"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" })
 
@@ -28,7 +30,7 @@ function assignmentVariant(status: FieldAssignment["status"]) {
   return "outline" as const
 }
 
-function InstallationSheet({ assignment }: { assignment: FieldAssignment }) {
+function InstallationSheet({ assignment, installed }: { assignment: FieldAssignment; installed: Record<string, number> }) {
   const { snapshot } = useInventory()
   const { isOnline, queueCommand } = useMobileSync()
   const queryClient = useQueryClient()
@@ -38,6 +40,8 @@ function InstallationSheet({ assignment }: { assignment: FieldAssignment }) {
   const [outcome, setOutcome] = useState<InstallationOutcome>("Installed")
   const [issueType, setIssueType] = useState("")
   const lines = snapshot.outboundLines.filter((line) => line.batchId === assignment.outboundBatchId)
+  const remaining = (line: typeof lines[number]) => line.quantity === null ? null : Math.max(0, line.quantity - (installed[line.id] ?? 0))
+  const departed = snapshot.outboundBatches.some((batch) => batch.id === assignment.outboundBatchId && batch.state === "Departed")
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -64,14 +68,23 @@ function InstallationSheet({ assignment }: { assignment: FieldAssignment }) {
       description: String(form.get("issueDescription") ?? ""),
     } : null
     const notes = String(form.get("notes") ?? "")
+    const unknownQuantityConfirmed = form.get("unknownQuantityConfirmed") === "on"
 
     try {
+      if (!departed) throw new Error("Record outbound departure before confirming installation.")
+      if (outcome === "Blocked" && !issue) throw new Error("Blocked installation requires a linked Issue.")
+      for (const line of lines) {
+        const amount = linePayload.find((item) => item.outboundLineId === line.id)!.installedQuantity
+        const balance = remaining(line)
+        if (!Number.isInteger(amount) || amount < 0 || (balance !== null && amount > balance)) throw new Error("Installed quantity exceeds the remaining delivered quantity.")
+        if (outcome === "Installed" && (balance !== null ? amount !== balance : !unknownQuantityConfirmed)) throw new Error("Resolve remaining quantities or confirm the unknown delivered quantity before selecting Installed.")
+      }
       if (isOnline) {
         const photoUploads = await stageFieldPhotos(commandId, assignment.siteId, files, notes || "Installation evidence")
-        await executeFieldWorkCommand(commandId, "field.installation.confirm", assignment.siteId, { assignmentId: assignment.id, expectedVersion: assignment.version, outcome, notes, lines: linePayload, photoUploads, issue })
+        await executeFieldWorkCommand(commandId, "field.installation.confirm", assignment.siteId, { assignmentId: assignment.id, expectedVersion: assignment.version, outcome, notes, unknownQuantityConfirmed, lines: linePayload, photoUploads, issue })
         await queryClient.invalidateQueries({ queryKey: ["field-work"] })
       } else {
-        await queueCommand({ clientMutationId: commandId, commandType: "field.installation.confirm", siteId: assignment.siteId, entityIds: [assignment.id], entityBaseVersions: { [assignment.id]: assignment.version }, payload: { assignmentId: assignment.id, expectedVersion: assignment.version, outcome, notes, lines: linePayload, photoUploads: files, issue } })
+        await queueCommand({ clientMutationId: commandId, commandType: "field.installation.confirm", siteId: assignment.siteId, entityIds: [assignment.id], entityBaseVersions: { [assignment.id]: assignment.version }, payload: { assignmentId: assignment.id, expectedVersion: assignment.version, outcome, notes, unknownQuantityConfirmed, lines: linePayload, photoUploads: files, issue } })
       }
       setOpen(false)
     } catch (cause) {
@@ -82,13 +95,14 @@ function InstallationSheet({ assignment }: { assignment: FieldAssignment }) {
   }
 
   return <Sheet open={open} onOpenChange={setOpen}>
-    <SheetTrigger render={<Button size="lg" className="w-full sm:w-auto" />}><CheckCircle2 aria-hidden="true" />Confirm installation</SheetTrigger>
+    <SheetTrigger render={<Button size="lg" className="w-full sm:w-auto" disabled={!departed} />}><CheckCircle2 aria-hidden="true" />{departed ? "Confirm installation" : "Awaiting outbound departure"}</SheetTrigger>
     <SheetContent className="w-full sm:max-w-xl">
       <SheetHeader className="border-b"><SheetTitle>Confirm installation</SheetTitle><SheetDescription>Record installed quantities and preserve field evidence for this outbound handoff.</SheetDescription></SheetHeader>
       <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
         <div className="flex-1 overflow-y-auto p-4"><FieldGroup>
           <Field><FieldLabel htmlFor={`outcome-${assignment.id}`}>Completion outcome</FieldLabel><NativeSelect id={`outcome-${assignment.id}`} value={outcome} onChange={(event) => setOutcome(event.target.value as InstallationOutcome)}><NativeSelectOption value="Installed">Installed</NativeSelectOption><NativeSelectOption value="Partially installed">Partially installed</NativeSelectOption><NativeSelectOption value="Blocked">Blocked</NativeSelectOption></NativeSelect></Field>
-          <div className="flex flex-col gap-2"><p className="font-medium">Installed quantities</p>{lines.map((line) => <Field key={line.id} orientation="horizontal" className="items-center rounded-xl border p-3"><div className="min-w-0 flex-1"><FieldLabel htmlFor={`installed-${line.id}`}>{line.materialName}</FieldLabel><FieldDescription>{line.quantity === null ? "Delivered quantity unknown" : `${line.quantity} ${line.packageType} delivered`}</FieldDescription></div><Input id={`installed-${line.id}`} name={`installed-${line.id}`} className="w-24" type="number" min="0" max={line.quantity ?? undefined} step="1" inputMode="numeric" defaultValue={line.quantity ?? 0} required /></Field>)}</div>
+          <div className="flex flex-col gap-2"><p className="font-medium">Installed quantities</p>{lines.map((line) => <Field key={line.id} orientation="horizontal" className="items-center rounded-xl border p-3"><div className="min-w-0 flex-1"><FieldLabel htmlFor={`installed-${line.id}`}>{line.materialName}</FieldLabel><FieldDescription>{line.quantity === null ? "Delivered quantity unknown" : `${remaining(line)} remaining of ${line.quantity} ${line.packageType} delivered`}</FieldDescription></div><Input id={`installed-${line.id}`} name={`installed-${line.id}`} className="w-24" type="number" min="0" max={remaining(line) ?? undefined} step="1" inputMode="numeric" key={`${outcome}-${remaining(line)}`} defaultValue={outcome === "Installed" ? remaining(line) ?? 0 : 0} required /></Field>)}</div>
+          {outcome === "Installed" && lines.some((line) => line.quantity === null) ? <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name="unknownQuantityConfirmed" required />I confirm installation is complete for material with an unknown delivered quantity.</label> : null}
           <Field><FieldLabel htmlFor={`notes-${assignment.id}`}>Installation notes</FieldLabel><Textarea id={`notes-${assignment.id}`} name="notes" placeholder="Completion, remaining work, access, or field conditions" /></Field>
           <PhotoUploadSlots id={`installation-photos-${assignment.id}`} name="installationPhotos" label="Installation photos" description="Optional. Add up to three photos from the camera or photo library." />
           <Field><FieldLabel htmlFor={`issue-${assignment.id}`}>Linked Issue</FieldLabel><NativeSelect id={`issue-${assignment.id}`} value={issueType} onChange={(event) => setIssueType(event.target.value)}><NativeSelectOption value="">No Issue</NativeSelectOption><NativeSelectOption value="Damaged">Damaged</NativeSelectOption><NativeSelectOption value="Missing">Missing</NativeSelectOption><NativeSelectOption value="Wrong project">Wrong material / project</NativeSelectOption><NativeSelectOption value="Blocked access">Blocked access</NativeSelectOption></NativeSelect><FieldDescription>Damaged material requires at least one photo.</FieldDescription></Field>
@@ -102,7 +116,7 @@ function InstallationSheet({ assignment }: { assignment: FieldAssignment }) {
   </Sheet>
 }
 
-function AssignmentCard({ assignment }: { assignment: FieldAssignment }) {
+function AssignmentCard({ assignment, installed }: { assignment: FieldAssignment; installed: Record<string, number> }) {
   const { snapshot } = useInventory()
   const { isOnline, queueCommand } = useMobileSync()
   const queryClient = useQueryClient()
@@ -127,14 +141,20 @@ function AssignmentCard({ assignment }: { assignment: FieldAssignment }) {
 
   return <Card size="sm">
     <CardHeader className="border-b"><div className="flex flex-wrap items-start justify-between gap-2"><div><CardTitle>{project?.name ?? "Assigned project"}</CardTitle><CardDescription>{lines.length} material line{lines.length === 1 ? "" : "s"}{assignment.dueAt ? ` · Due ${dateFormatter.format(new Date(assignment.dueAt))}` : ""}</CardDescription></div><Badge variant={assignmentVariant(assignment.status)}>{assignment.status}</Badge></div></CardHeader>
-    <CardContent className="flex flex-col gap-4">{assignment.note ? <p className="rounded-lg bg-muted/45 p-3 text-sm">{assignment.note}</p> : null}<div className="grid gap-2">{lines.map((line) => <div key={line.id} className="flex items-start justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{line.materialName}</p>{line.handlingRequirements.length ? <p className="mt-1 text-xs text-destructive"><AlertTriangle aria-hidden="true" className="mr-1 inline size-3.5" />{line.handlingRequirements.join(" · ")}</p> : null}</div><p className="shrink-0 font-mono text-sm">{line.quantity ?? "Unknown"} {line.packageType}</p></div>)}</div>{error ? <p className="text-sm text-destructive">{error}</p> : null}<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">{assignment.status === "Not Started" ? <Button size="lg" variant="outline" onClick={start}><Play aria-hidden="true" />{isOnline ? "Start work" : "Queue start"}</Button> : null}{assignment.status !== "Completed" && assignment.status !== "Cancelled" ? <InstallationSheet assignment={assignment} /> : null}</div></CardContent>
+    <CardContent className="flex flex-col gap-4">{assignment.note ? <p className="rounded-lg bg-muted/45 p-3 text-sm">{assignment.note}</p> : null}<div className="grid gap-2">{lines.map((line) => <div key={line.id} className="flex items-start justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{line.materialName}</p>{line.handlingRequirements.length ? <p className="mt-1 text-xs text-destructive"><AlertTriangle aria-hidden="true" className="mr-1 inline size-3.5" />{line.handlingRequirements.join(" · ")}</p> : null}</div><p className="shrink-0 font-mono text-sm">{line.quantity ?? "Unknown"} {line.packageType}</p></div>)}</div>{error ? <p className="text-sm text-destructive">{error}</p> : null}<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">{assignment.status === "Not Started" ? <Button size="lg" variant="outline" onClick={start}><Play aria-hidden="true" />{isOnline ? "Start work" : "Queue start"}</Button> : null}{assignment.status !== "Completed" && assignment.status !== "Cancelled" ? <InstallationSheet assignment={assignment} installed={installed} /> : null}</div></CardContent>
   </Card>
 }
 
 export function TechWorkWorkspace({ authenticated }: { authenticated: boolean }) {
   const { snapshot, isHydrating } = useInventory()
   const [search, setSearch] = useState("")
-  const fieldWork = useQuery({ queryKey: ["field-work"], queryFn: loadFieldWorkSnapshot, enabled: authenticated })
+  const { scope, isOnline, mutations } = useMobileSync()
+  const fieldWork = useQuery({ queryKey: ["field-work", scope, isOnline], queryFn: () => loadPreparedFieldWork(scope, isOnline), enabled: authenticated, networkMode: "always" })
+  const installed: Record<string, number> = {}
+  for (const line of fieldWork.data?.lines ?? []) if (line.outboundLineId) installed[line.outboundLineId] = (installed[line.outboundLineId] ?? 0) + line.installedQuantity
+  for (const command of mutations.filter((entry) => entry.commandType === "field.installation.confirm")) {
+    for (const line of (command.payload.lines ?? []) as Array<{outboundLineId: string; installedQuantity: number}>) installed[line.outboundLineId] = (installed[line.outboundLineId] ?? 0) + line.installedQuantity
+  }
   const presentLots = snapshot.lots.filter((lot) => lot.presence === "Present")
   const filteredLots = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
@@ -146,13 +166,16 @@ export function TechWorkWorkspace({ authenticated }: { authenticated: boolean })
       return [project?.name, group?.name, location?.name].some((value) => value?.toLocaleLowerCase().includes(query))
     }).slice(0, 24)
   }, [presentLots, search, snapshot.groups, snapshot.locations, snapshot.projects])
-  const assignments = fieldWork.data?.assignments.filter((assignment) => assignment.status !== "Cancelled") ?? []
+  const assignments = (fieldWork.data?.assignments ?? []).filter((assignment) => assignment.status !== "Cancelled").map((assignment) => {
+    const pending = mutations.filter((entry) => entry.payload.assignmentId === assignment.id)
+    return { ...assignment, version: assignment.version + pending.length, status: pending.some((entry) => entry.commandType === "field.assignment.start") && assignment.status === "Not Started" ? "In Progress" as const : assignment.status }
+  })
   const assignedBatchIds = new Set(assignments.map((assignment) => assignment.outboundBatchId).filter(Boolean))
   const outbound = snapshot.outboundBatches.filter((batch) => assignedBatchIds.has(batch.id))
 
   return <div className="flex flex-1 flex-col gap-6">
     <PageHeader eyebrow="Field workspace" title="My Work" description="Review assigned installation work, material context, and outbound handoffs for project sites." action={<Badge variant="outline"><HardHat aria-hidden="true" data-icon="inline-start" />Tech access</Badge>} />
-    <section className="flex flex-col gap-3" aria-labelledby="assigned-work-heading"><div><h2 id="assigned-work-heading" className="font-semibold">Assigned Work</h2><p className="text-sm text-muted-foreground">Start, confirm, or document work assigned by an Operator.</p></div>{!authenticated ? <Alert><Clock3 aria-hidden="true" /><AlertTitle>Sign in to load assignments</AlertTitle><AlertDescription>Assigned installation work is available from the shared demo environment after authentication.</AlertDescription></Alert> : fieldWork.isLoading ? <p className="rounded-xl border p-6 text-sm text-muted-foreground">Loading assigned work…</p> : fieldWork.error ? <Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>Assigned work is unavailable</AlertTitle><AlertDescription>{fieldWork.error.message}</AlertDescription></Alert> : assignments.length ? assignments.map((assignment) => <AssignmentCard key={assignment.id} assignment={assignment} />) : <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No installation work is assigned to this account.</p>}</section>
+    <section className="flex flex-col gap-3" aria-labelledby="assigned-work-heading"><div><h2 id="assigned-work-heading" className="font-semibold">Assigned Work</h2><p className="text-sm text-muted-foreground">Start, confirm, or document work assigned by an Operator.</p></div>{!authenticated ? <Alert><Clock3 aria-hidden="true" /><AlertTitle>Sign in to load assignments</AlertTitle><AlertDescription>Assigned installation work is available from the shared demo environment after authentication.</AlertDescription></Alert> : fieldWork.isLoading ? <p className="rounded-xl border p-6 text-sm text-muted-foreground">Loading assigned work…</p> : fieldWork.error ? <Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>Assigned work is unavailable</AlertTitle><AlertDescription>{fieldWork.error.message}</AlertDescription></Alert> : assignments.length ? assignments.map((assignment) => <AssignmentCard key={assignment.id} assignment={assignment} installed={installed} />) : <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No installation work is assigned to this account.</p>}</section>
     <Card><CardHeader className="border-b"><CardTitle className="flex items-center gap-2"><Boxes aria-hidden="true" />Read-only Inventory Search</CardTitle><CardDescription>Find pickup and installation context without changing yard records.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3"><div className="relative"><Search aria-hidden="true" className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search project, material, or location" /></div><div className="grid gap-2">{filteredLots.map((lot) => { const project = snapshot.projects.find((item) => item.id === lot.projectId); const group = snapshot.groups.find((item) => item.id === lot.groupId); const site = snapshot.sites.find((item) => item.id === lot.siteId); const location = snapshot.locations.find((item) => item.id === lot.locationId); return <div key={lot.id} className="grid gap-1 rounded-xl border p-3 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="font-medium">{group?.name ?? "Material"}</p><p className="text-sm text-muted-foreground">{project?.name ?? "Unknown project"} · {site?.name ?? "Unknown site"}</p></div><p className="text-sm"><MapPin aria-hidden="true" className="mr-1 inline size-3.5" />{location?.name ?? "Unknown"} · <span className="font-mono">{lot.quantity ?? "Unknown"} {lot.packageType}</span></p></div>})}</div>{!filteredLots.length && !isHydrating ? <p className="p-5 text-center text-sm text-muted-foreground">No material matches this search.</p> : null}</CardContent></Card>
     <Card><CardHeader className="border-b"><CardTitle className="flex items-center gap-2"><PackageCheck aria-hidden="true" />Relevant Outbound context</CardTitle><CardDescription>Handoffs connected to your assigned installation work.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">{outbound.length ? outbound.map((batch) => { const project = snapshot.projects.find((item) => item.id === batch.projectId); const lines = snapshot.outboundLines.filter((line) => line.batchId === batch.id); return <div key={batch.id} className="flex flex-col gap-2 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{project?.name ?? "Outbound batch"}</p><p className="text-sm text-muted-foreground">{lines.map((line) => line.materialName).join(" · ") || "Material details pending"}</p></div><Badge variant={batch.state === "Ready" ? "default" : "outline"}>{batch.state}</Badge></div> }) : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Outbound context appears after work is assigned.</p>}</CardContent></Card>
   </div>

@@ -4,6 +4,7 @@ import type { MobileCacheManifest, QueuedMutation, QueuedPhoto, SyncConflict } f
 import type { MobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { buildQueuedMutation, formatBytes, MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
 import { prepareQueuedCommandPayload, queuedPhotoTicketRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { withDeviceLock } from "@/features/mobile/repositories/scoped-database"
 
 const siteId = "10000000-0000-4000-8000-000000000001"
 const lotId = "10000000-0000-4000-8000-000000000002"
@@ -69,6 +70,33 @@ describe("Phase 7 mobile sync journal", () => {
 
     expect(second.id).toBe(first.id)
     expect((await journal.snapshot()).mutations).toHaveLength(1)
+  })
+
+  it("serializes concurrent device writes before deduplicating replay identity", async () => {
+    const persistence = new MemoryMobileSyncPersistence()
+    const journal = new MobileSyncJournal(persistence)
+    const input = { clientMutationId: mutationId, commandType: "verification.confirm" as const, siteId, actor, entityIds: [lotId], entityBaseVersions: { [lotId]: 2 }, payload: { lotId, expectedVersion: 2 } }
+    const originalLocks = Object.getOwnPropertyDescriptor(navigator, "locks")
+    let tail = Promise.resolve()
+    const request = async <T>(_name: string, work: () => Promise<T>) => {
+      const previous = tail
+      let release: () => void = () => {}
+      tail = new Promise<void>((resolve) => { release = resolve })
+      await previous
+      try { return await work() } finally { release() }
+    }
+    Object.defineProperty(navigator, "locks", { configurable: true, value: { request } })
+    try {
+      const [first, second] = await Promise.all([
+        withDeviceLock("scope", () => journal.enqueue(input)),
+        withDeviceLock("scope", () => journal.enqueue(input)),
+      ])
+      expect(second.id).toBe(first.id)
+      expect((await journal.snapshot()).mutations).toHaveLength(1)
+    } finally {
+      if (originalLocks) Object.defineProperty(navigator, "locks", originalLocks)
+      else Reflect.deleteProperty(navigator, "locks")
+    }
   })
 
   it("prepares a separately versioned cache manifest without clearing pending work", async () => {

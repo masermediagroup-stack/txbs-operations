@@ -1,3 +1,4 @@
+import { verifyCommandEvidence } from "@/features/inventory/server/verify-evidence"
 import { NextResponse } from "next/server"
 import { ZodError } from "zod"
 
@@ -11,10 +12,12 @@ export const dynamic = "force-dynamic"
 export async function POST(request: Request) {
   const operator = await getCurrentOperator()
   if (!operator) return NextResponse.json({ error: "Authentication is required." }, { status: 401 })
+  if (request.headers.has("x-tbs-actor") && request.headers.get("x-tbs-actor") !== operator.id) return NextResponse.json({ error: "The queued action belongs to another account." }, { status: 403 })
   if (!operator.active) return NextResponse.json({ error: "This account is not active." }, { status: 403 })
 
   try {
     const command = parseFieldWorkCommand(await request.json())
+    await verifyCommandEvidence(command.commandId, operator.id)
     const { data, error } = await (await createClient()).rpc("execute_field_work_command_v1", {
       p_command_id: command.commandId,
       p_command_type: command.commandType,

@@ -1,11 +1,17 @@
-const VERSION = "tbs-yard-v2"
+const VERSION = "tbs-yard-v4"
 const SHELL_CACHE = `${VERSION}-shell`
 const ASSET_CACHE = `${VERSION}-assets`
 const OFFLINE_URL = "/offline"
 const SHELL_URLS = [OFFLINE_URL, "/manifest.webmanifest", "/icon.svg"]
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_URLS)))
+  event.waitUntil(caches.open(SHELL_CACHE).then(async (cache) => {
+    for (const path of SHELL_URLS) {
+      const response = await fetch(path, { credentials: "omit", redirect: "error", cache: "no-store" })
+      if (!response.ok || response.redirected) throw new Error("Offline shell must be public and must not redirect.")
+      await cache.put(path, response)
+    }
+  }))
 })
 
 self.addEventListener("activate", (event) => {

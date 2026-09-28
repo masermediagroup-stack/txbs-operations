@@ -1,37 +1,65 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Boxes, FolderKanban, MapPin, Search } from "lucide-react";
-import { inventorySearchResults } from "@/features/inventory/data/mock-data";
-import type { InventorySearchResult } from "@/features/inventory/types/inventory";
-
-const resultIcons: Record<InventorySearchResult["type"], typeof Search> = { Project: FolderKanban, Material: Boxes, Storage: MapPin };
+import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
+import { Search } from "lucide-react"
+import type { InventorySearchResult } from "@/features/inventory/types/inventory"
+import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
+import { IndexedDbInventoryPersistence } from "@/features/inventory/repositories/indexeddb-inventory-persistence"
+import { inventorySearchRecords } from "@/features/inventory/domain/inventory-search"
+import { inventorySeed } from "@/features/inventory/data/seed-data"
 
 export function GlobalInventorySearch() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const normalizedQuery = query.trim().toLowerCase();
-  const results = normalizedQuery ? inventorySearchResults.filter((result) => result.searchText.includes(normalizedQuery)).slice(0, 7) : [];
-
-  useEffect(() => {
-    const handleShortcut = (event: KeyboardEvent) => { if (event.ctrlKey && event.key.toLowerCase() === "m") { event.preventDefault(); inputRef.current?.focus(); setOpen(true); } };
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  }, []);
-
-  return (
-    <>
-    <Link href="/inventory#inventory-project-search" aria-label="Search inventory" className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"><Search aria-hidden="true" className="size-4" /></Link>
-    <div className="relative hidden lg:block" role="search">
-      <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
-      <input ref={inputRef} name="global-inventory-search" autoComplete="off" value={query} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => window.setTimeout(() => setOpen(false), 120)} onKeyDown={(event) => { if (event.key === "Escape") { setOpen(false); inputRef.current?.blur(); } }} placeholder="Search" aria-label="Search inventory" role="combobox" aria-autocomplete="list" aria-expanded={open && Boolean(normalizedQuery)} aria-controls="global-search-results" className="h-9 w-52 rounded-lg border bg-card pr-14 pl-9 text-sm outline-none transition-[width,border-color,box-shadow] placeholder:text-muted-foreground focus:w-64 focus:border-ring focus:ring-3 focus:ring-ring/30 xl:w-64 xl:focus:w-72" />
-      <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">Ctrl M</kbd>
-      {open && normalizedQuery ? <div id="global-search-results" className="absolute top-11 right-0 z-50 w-96 overflow-hidden rounded-xl border bg-popover p-1.5 shadow-xl">
-        {results.length ? results.map((result) => { const Icon = resultIcons[result.type]; return <Link key={`${result.type}-${result.id}`} href={result.href} className="flex items-center gap-3 rounded-lg px-3 py-2.5 outline-none hover:bg-muted focus-visible:bg-muted" onClick={() => { setOpen(false); setQuery(""); }}><span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-primary"><Icon aria-hidden="true" className="size-4" /></span><span className="min-w-0"><span className="block truncate text-sm font-medium">{result.title}</span>{result.type !== "Project" ? <span className="block truncate text-xs text-muted-foreground">{result.subtitle}</span> : null}</span><span className="ml-auto text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{result.type}</span></Link>; }) : <div className="px-3 py-6 text-center text-sm text-muted-foreground">No projects, materials, or storage found.</div>}
-      </div> : null}
+  const {operator,scope,isOnline}=useMobileSync()
+  const input=useRef<HTMLInputElement>(null)
+  const container=useRef<HTMLDivElement>(null)
+  const [query,setQuery]=useState("")
+  const [open,setOpen]=useState(false)
+  const [loading,setLoading]=useState(false)
+  const [error,setError]=useState("")
+  const [results,setResults]=useState<InventorySearchResult[]>([])
+  useEffect(()=>{
+    const controller=new AbortController()
+    const timer=setTimeout(async()=>{
+      setError("")
+      if (!query.trim()) {setResults([]);setLoading(false);return}
+      setLoading(true)
+      try {
+        if (operator && isOnline) {
+          const response=await fetch(`/api/inventory/search?q=${encodeURIComponent(query)}`,{cache:"no-store",signal:controller.signal})
+          if (!response.ok) throw new Error("Search unavailable. Reconnect or sign in again.")
+          const data=await response.json() as InventorySearchResult[]
+          if (!controller.signal.aborted) setResults(data)
+        } else {
+          const persistence=new IndexedDbInventoryPersistence(scope)
+          const snapshot=operator ? await persistence.requirePreparedSnapshot() : await persistence.load(inventorySeed)
+          if (!controller.signal.aborted) setResults(inventorySearchRecords(snapshot,query))
+        }
+      } catch (cause) {
+        if (!controller.signal.aborted) {setResults([]);setError(cause instanceof Error ? cause.message : "Search is unavailable.")}
+      } finally {if (!controller.signal.aborted) setLoading(false)}
+    },150)
+    return ()=>{clearTimeout(timer);controller.abort()}
+  },[query,operator,scope,isOnline])
+  useEffect(()=>{
+    const shortcut=(event:KeyboardEvent)=>{if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==="m") {event.preventDefault();input.current?.focus();setOpen(true)}}
+    window.addEventListener("keydown",shortcut)
+    return ()=>window.removeEventListener("keydown",shortcut)
+  },[])
+  return <>
+    <Link href="/inventory#inventory-project-search" aria-label="Search inventory" className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 lg:hidden"><Search aria-hidden="true" className="size-4" /></Link>
+    <div ref={container} className="relative hidden lg:block" role="search" onBlur={(event)=>{if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false)}} onKeyDown={(event)=>{
+      const links=Array.from(container.current?.querySelectorAll<HTMLAnchorElement>("nav a") ?? [])
+      const index=links.indexOf(document.activeElement as HTMLAnchorElement)
+      if (event.key==="Escape") {input.current?.focus();setOpen(false)}
+      if (event.key==="ArrowDown" && links.length) {event.preventDefault();links[Math.min(index+1,links.length-1)].focus()}
+      if (event.key==="ArrowUp") {event.preventDefault();if (index<=0) input.current?.focus();else links[index-1].focus()}
+    }}>
+      <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <input ref={input} type="search" autoComplete="off" value={query} onChange={(event)=>{setQuery(event.target.value);setResults([]);setLoading(Boolean(event.target.value.trim()));setOpen(true)}} onFocus={()=>setOpen(true)} placeholder="Search inventory" aria-label="Search inventory" aria-controls={open && query.trim() ? "global-search-results" : undefined} className="h-11 w-64 rounded-lg border bg-card pr-3 pl-9 text-sm outline-none focus:ring-2 focus:ring-ring" />
+      {open && query.trim() ? <nav id="global-search-results" aria-label="Inventory search results" className="absolute top-12 right-0 z-50 w-96 rounded-xl border bg-popover p-2 shadow-xl">
+        {loading ? <p role="status" className="p-4 text-sm">Searching inventory…</p> : error ? <p role="alert" className="p-4 text-sm text-destructive">{error}</p> : results.length ? results.map((result)=><Link key={result.type+result.id} href={result.href} className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={()=>{setOpen(false);setQuery("")}}><span className="truncate text-sm font-medium">{result.title}</span><span className="shrink-0 text-xs text-muted-foreground">{result.type}</span></Link>) : <p role="status" className="p-4 text-sm text-muted-foreground">No matching inventory records.</p>}
+      </nav> : null}
     </div>
-    </>
-  );
+  </>
 }

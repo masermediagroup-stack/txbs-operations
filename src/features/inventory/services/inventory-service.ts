@@ -287,7 +287,7 @@ export function createInventoryService(persistence: InventoryPersistence, seed: 
         if (!input.lines.length) throw new Error("Add at least one receipt line.")
         const existing = input.receiptId ? snapshot.receipts.find((receipt) => receipt.id === input.receiptId) : null
         if (existing?.status === "Received") throw new Error("A completed receipt cannot be edited.")
-        const receiptId = existing?.id ?? crypto.randomUUID()
+        const receiptId = existing?.id ?? input.receiptId ?? crypto.randomUUID()
         const lineIds = input.lines.map((line) => line.id ?? crypto.randomUUID())
         const existingLinePhotos = new Map(snapshot.receiptLines.filter((line) => line.receiptId === receiptId).map((line) => [line.id, line.photoIds]))
         const selectedDocumentFiles = evidenceFiles({ files: input.documentFiles, file: input.documentFile })

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { commandLabel, useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
+import { ConflictComparison } from "@/features/mobile/components/conflict-comparison"
 import { formatBytes } from "@/features/mobile/services/mobile-sync-journal"
 import { cn } from "@/lib/utils"
 
@@ -20,7 +21,8 @@ export function SyncStatusControl() {
   const sync = useMobileSync()
   const pendingCount = sync.mutations.length
   const conflictCount = sync.conflicts.length
-  const title = !sync.isOnline
+  const transfer = sync.activeTransfers[0]
+  const title = transfer ? `Uploading photo ${Math.min(100, Math.round(transfer.loaded / transfer.total * 100))}%` : !sync.isOnline
     ? "Offline"
     : conflictCount
       ? `${conflictCount} sync conflict${conflictCount === 1 ? "" : "s"}`
@@ -60,7 +62,7 @@ export function SyncStatusControl() {
           className={cn(
             "size-5",
             !sync.isOnline && "text-muted-foreground",
-            (pendingCount > 0 || sync.updateAvailable) && sync.isOnline && "text-brand-orange",
+            (pendingCount + conflictCount > 0 || sync.updateAvailable) && sync.isOnline && "text-brand-orange",
             conflictCount > 0 && "text-destructive",
           )}
         />
@@ -95,6 +97,14 @@ export function SyncStatusControl() {
             </div>
           </div>
 
+          {sync.activeTransfers.length ? <section aria-label="Photo upload progress" className="space-y-2">
+            {sync.activeTransfers.map((item) => <div key={item.id} className="space-y-1 text-sm">
+              <label htmlFor={`upload-${item.id}`} className="block truncate">{item.fileName}</label>
+              <progress id={`upload-${item.id}`} className="w-full" max={item.total} value={item.loaded} />
+              <p className="text-xs text-muted-foreground">{formatBytes(item.loaded)} of {formatBytes(item.total)}</p>
+            </div>)}
+          </section> : null}
+
           {!sync.isOnline ? (
             <Alert>
               <CloudOff aria-hidden="true" />
@@ -102,6 +112,12 @@ export function SyncStatusControl() {
               <AlertDescription>Inventory actions still save to this device. Shared updates wait until connectivity and server sync are available.</AlertDescription>
             </Alert>
           ) : null}
+
+          {sync.legacyDataLocked ? <Alert>
+            <AlertTriangle aria-hidden="true" />
+            <AlertTitle>Earlier device data is preserved</AlertTitle>
+            <AlertDescription>Work from an earlier app version is locked until its owner is verified. Contact your TBS administrator before clearing browser storage. It is not included in this account’s recovery export.</AlertDescription>
+          </Alert> : null}
 
           {sync.syncError ? (
             <Alert variant="destructive">
@@ -155,7 +171,7 @@ export function SyncStatusControl() {
                         <p className="mt-1 text-xs text-muted-foreground">{relativeTime(mutation.createdAt)} · {mutation.actor.displayName}</p>
                         {mutation.photoIds.length ? <p className="mt-1 text-xs text-muted-foreground">{mutation.photoIds.length} photo{mutation.photoIds.length === 1 ? "" : "s"} retained</p> : null}
                       </div>
-                      <Button type="button" size="icon-sm" variant="ghost" aria-label={`Discard ${commandLabel(mutation.commandType)}`} onClick={() => void sync.discardMutation(mutation.id)}>
+                      <Button type="button" size="icon-sm" variant="ghost" aria-label={`Discard ${commandLabel(mutation.commandType)}`} onClick={() => { if (window.confirm("Discard this action and its photos? Export recovery first if you need to keep them.")) void sync.discardMutation(mutation.id) }}>
                         <Trash2 aria-hidden="true" />
                       </Button>
                     </div>
@@ -183,7 +199,9 @@ export function SyncStatusControl() {
                     <p className="font-medium text-destructive">{conflict.title}</p>
                     <p className="mt-1 text-sm">{conflict.localSummary}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Current server record: {conflict.serverSummary}</p>
-                    <Button type="button" size="sm" variant="outline" className="mt-3" onClick={() => void sync.discardConflict(conflict.id)}>Discard local action</Button>
+                    <ConflictComparison mutation={sync.mutations.find((item) => item.id === conflict.mutationId)} />
+                    <Button type="button" size="sm" variant="outline" className="mt-3 mr-2" onClick={() => void sync.retryConflict(conflict.id)}>Retry original command</Button>
+                    <Button type="button" size="sm" variant="outline" className="mt-3" onClick={() => { if (window.confirm("Discard the conflicting command and its retained photos?")) void sync.discardConflict(conflict.id) }}>Discard local action</Button>
                   </li>
                 ))}
               </ul>
@@ -195,14 +213,13 @@ export function SyncStatusControl() {
 
         <SheetFooter className="border-t bg-background">
           {sync.updateAvailable ? <Button type="button" size="lg" variant="outline" onClick={sync.applyUpdate}><Download aria-hidden="true" data-icon="inline-start" />Apply update</Button> : null}
-          <Button type="button" size="lg" onClick={() => void sync.syncNow()} disabled={sync.isSyncing || !sync.isOnline}>
+          <Button type="button" size="lg" onClick={() => void sync.syncNow()} disabled={sync.isSyncing || !sync.isOnline || !sync.isSharedReplayAvailable}>
             <RefreshCw aria-hidden="true" data-icon="inline-start" className={sync.isSyncing ? "animate-spin" : undefined} />
             {sync.isSyncing ? "Checking…" : "Sync now"}
           </Button>
-          {pendingCount ? <Button type="button" size="lg" variant="ghost" onClick={() => void downloadJournal()}>Export recovery journal</Button> : null}
+          {pendingCount || conflictCount ? <Button type="button" size="lg" variant="ghost" onClick={() => void downloadJournal()}>Export recovery journal</Button> : null}
         </SheetFooter>
       </SheetContent>
     </Sheet>
   )
 }
-

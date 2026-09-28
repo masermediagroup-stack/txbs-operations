@@ -1604,6 +1604,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      verify_staged_upload: {
+        Args: {
+          p_actor_id: string
+          p_checksum: string
+          p_size: number
+          p_upload_id: string
+        }
+        Returns: undefined
+      }
       finish_receipt_notification_v1: {
         Args: {
           p_delivery_id: string

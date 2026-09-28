@@ -1,3 +1,4 @@
+import { getSupabaseEnvironment } from "@/lib/supabase/env";
 import type { ReactNode } from "react";
 
 import { AppSidebar } from "@/components/shell/app-sidebar";
@@ -8,10 +9,12 @@ import {
 } from "@/components/ui/sidebar";
 import type { CurrentOperator } from "@/features/auth/server/session";
 import { MobileSyncProvider } from "@/features/mobile/components/mobile-sync-provider";
+import { OfflineNavigationGuard } from "@/features/mobile/components/offline-navigation-guard";
 
 export function OperationsShell({ children, operator }: { children: ReactNode; operator: CurrentOperator | null }) {
   return (
-    <MobileSyncProvider operator={operator}>
+    <MobileSyncProvider key={operator?.id ?? "local"} operator={operator} scope={operator ? `${new URL(getSupabaseEnvironment().url).host}:${operator.id}` : "local"}>
+      <OfflineNavigationGuard />
       <SidebarProvider>
         <AppSidebar operator={operator} />
         <SidebarInset id="main-content" tabIndex={-1}>

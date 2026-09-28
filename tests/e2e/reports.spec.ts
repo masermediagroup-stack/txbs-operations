@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 test("reports provide filters, worklists, drill-through, and CSV at the current viewport", async ({ page }) => {
   await page.goto("/reports");
   await expect(page.getByRole("heading", { name: "Reports" })).toBeAttached();
-  await expect(page.getByText("Operations intelligence")).toBeVisible();
+  await expect(page.locator("#main-content").getByText("Operations intelligence", { exact: true })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Verification" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Material verification worklist")).toBeVisible();
   await expect(page.getByText("Materials to verify", { exact: true })).toBeVisible();
@@ -50,7 +50,7 @@ test("reports provide filters, worklists, drill-through, and CSV at the current 
 
 test("reports are accessible at the current viewport", async ({ page }) => {
   await page.goto("/reports");
-  await expect(page.getByText("Operations intelligence")).toBeVisible();
+  await expect(page.locator("#main-content").getByText("Operations intelligence", { exact: true })).toBeVisible();
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();

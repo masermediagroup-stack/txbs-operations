@@ -1,9 +1,9 @@
+import { remapQueuedMutation } from "@/features/mobile/domain/replay-identity"
 import type { MobileCacheManifest, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
-import { MOBILE_SYNC_DATABASE_VERSION } from "@/features/mobile/domain/mobile-sync"
+import { openScopedDatabase, storeQueuedPhotos, type StoredQueuedPhoto } from "./scoped-database"
 
-const DATABASE_NAME = "tbs-operations-mobile"
 const MUTATION_STORE = "mutations"
-const PHOTO_STORE = "photos"
+const PHOTO_STORE = "queued-photos"
 const CONFLICT_STORE = "conflicts"
 const META_STORE = "meta"
 const MANIFEST_KEY = "cache-manifest"
@@ -29,6 +29,7 @@ export interface MobileSyncPersistence {
   listConflicts(): Promise<SyncConflict[]>
   enqueue(mutation: QueuedMutation, photos: QueuedPhoto[]): Promise<void>
   putMutation(mutation: QueuedMutation): Promise<void>
+  acknowledgeMutation?(mutation: QueuedMutation, mapping: Record<string, string>): Promise<void>
   removeMutation(id: string): Promise<void>
   removePhoto(id: string): Promise<void>
   putConflict(conflict: SyncConflict): Promise<void>
@@ -39,24 +40,9 @@ export interface MobileSyncPersistence {
 }
 
 export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
-  private databasePromise: Promise<IDBDatabase> | null = null
+  constructor(private readonly scope = "local") {}
 
-  private database() {
-    if (this.databasePromise) return this.databasePromise
-    this.databasePromise = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, MOBILE_SYNC_DATABASE_VERSION)
-      request.onupgradeneeded = () => {
-        const database = request.result
-        if (!database.objectStoreNames.contains(MUTATION_STORE)) database.createObjectStore(MUTATION_STORE, { keyPath: "id" })
-        if (!database.objectStoreNames.contains(PHOTO_STORE)) database.createObjectStore(PHOTO_STORE, { keyPath: "id" })
-        if (!database.objectStoreNames.contains(CONFLICT_STORE)) database.createObjectStore(CONFLICT_STORE, { keyPath: "id" })
-        if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE)
-      }
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error ?? new Error("Could not open mobile yard storage."))
-    })
-    return this.databasePromise
-  }
+  private database() { return openScopedDatabase(this.scope) }
 
   private async list<T>(storeName: string) {
     const database = await this.database()
@@ -72,7 +58,7 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
   }
 
   async listPhotos() {
-    return this.list<QueuedPhoto>(PHOTO_STORE)
+    return (await this.list<StoredQueuedPhoto>(PHOTO_STORE)).map(({ bytes, ...photo }) => ({ ...photo, blob: new Blob([bytes], { type: photo.contentType }) }))
   }
 
   async listConflicts() {
@@ -80,10 +66,11 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
   }
 
   async enqueue(mutation: QueuedMutation, photos: QueuedPhoto[]) {
+    const storedPhotos = await storeQueuedPhotos(photos)
     const database = await this.database()
     const transaction = database.transaction([MUTATION_STORE, PHOTO_STORE], "readwrite")
     transaction.objectStore(MUTATION_STORE).put(mutation)
-    for (const photo of photos) transaction.objectStore(PHOTO_STORE).put(photo)
+    for (const photo of storedPhotos) transaction.objectStore(PHOTO_STORE).put(photo)
     await transactionDone(transaction)
   }
 
@@ -108,6 +95,24 @@ export class IndexedDbMobileSyncPersistence implements MobileSyncPersistence {
       transaction.oncomplete = () => resolve()
       transaction.onerror = () => reject(transaction.error ?? new Error("Mobile storage transaction failed."))
       transaction.onabort = () => reject(transaction.error ?? new Error("Mobile storage transaction was aborted."))
+    })
+  }
+
+  async acknowledgeMutation(mutation: QueuedMutation, mapping: Record<string, string>) {
+    const database = await this.database()
+    await new Promise<void>((resolve, reject) => {
+      const tx = database.transaction([MUTATION_STORE, PHOTO_STORE], "readwrite")
+      const store = tx.objectStore(MUTATION_STORE)
+      const read = store.getAll() as IDBRequest<QueuedMutation[]>
+      read.onsuccess = () => {
+        for (const queued of read.result) {
+          if (queued.id === mutation.id) store.delete(queued.id)
+          else store.put(remapQueuedMutation(queued, mapping))
+        }
+        for (const photo of mutation.photoIds) tx.objectStore(PHOTO_STORE).delete(photo)
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = tx.onabort = () => reject(tx.error)
     })
   }
 

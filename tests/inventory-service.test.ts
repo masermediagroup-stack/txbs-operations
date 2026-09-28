@@ -232,8 +232,10 @@ describe("receiving operations", () => {
     const persistence = new MemoryInventoryPersistence()
     const service = createInventoryService(persistence, inventorySeed)
     const project = inventorySeed.projects[0]
-    const draft = await service.saveReceiptDraft({ siteId: project.siteId, receiptNumber: "RCV-100", projectId: project.id, inspectionState: "Passed", handwrittenProjectText: "FW Walton", physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", lines: [line, { ...line, materialName: "Accessory cartons", packageType: "Box", quantity: null }] })
+    const stableReceiptId = crypto.randomUUID()
+    const draft = await service.saveReceiptDraft({ receiptId: stableReceiptId, siteId: project.siteId, receiptNumber: "RCV-100", projectId: project.id, inspectionState: "Passed", handwrittenProjectText: "FW Walton", physicalLabelApplied: true, stagingLocationId: inventorySeed.locations[0].id, notes: "", operatorName: "Receiving Operator", lines: [line, { ...line, materialName: "Accessory cartons", packageType: "Box", quantity: null }] })
     const receipt = draft.receipts.at(-1)!
+    expect(receipt.id).toBe(stableReceiptId)
     expect((await service.load()).receipts.find((item) => item.id === receipt.id)?.status).toBe("Draft")
     const lotCount = draft.lots.length
 

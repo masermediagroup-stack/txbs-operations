@@ -46,7 +46,7 @@ export async function retryReceiptNotificationAction(formData: FormData) {
 
   let sent: number
   try {
-    const result = await dispatchReceiptNotifications(await createClient(), parsed.data)
+    const result = await dispatchReceiptNotifications(parsed.data)
     sent = result.sent
   } catch (error) {
     const message = error instanceof Error ? error.message : "Notification retry failed."

@@ -1,0 +1,37 @@
+# Device recovery and evidence retention
+
+## Current account recovery
+
+Open Yard sync and export the recovery journal before any explicit discard. The export includes original command payloads, dependencies, expected versions and photo bytes, including conflicted commands. Compare with the shared record while online. Retry retains the original expected version; it does not silently overwrite shared changes. Resolve physical discrepancies before recording a replacement action.
+
+Do not clear browser storage to resolve a conflict. Account switching locks other accounts' scoped data. Sign in as the original account in the original environment to resume that account's journal.
+
+## Earlier app versions
+
+The databases `tbs-operations-inventory` and `tbs-operations-mobile` remain untouched. Yard sync reports their presence where the browser supports database enumeration. An empty current-account journal does not establish that these older databases are empty.
+
+Before migrating legacy work, an administrator must preserve the browser profile and verify each command's original actor and environment against the authoritative account and command history. Preserve an encrypted copy in approved company storage. Do not send raw archives containing operational photos through unapproved channels.
+
+Use this recovery sequence:
+
+1. Preserve the browser profile and both legacy databases before opening or clearing them. Record the device custodian and collection time.
+2. Create an encrypted archive in approved company storage. Record its approved storage reference and checksum outside the raw archive.
+3. Record each entry's source database, original actor UUID, original environment host/scope, client mutation UUID, expected record versions, and evidence checksum and byte size. Do not infer missing values.
+4. Query the authoritative command receipt using the original command UUID. An exact actor/environment receipt means the action is already recorded and must not be replayed. A mismatched receipt remains quarantined.
+5. Run the read-only legacy recovery assessment represented by `assessLegacyRecovery`. Only `eligible-for-manual-recovery` may proceed to explicit administrator review. `already-recorded` and `quarantined` entries never replay.
+6. Compare eligible entries with the current authorized record and reconcile any physical quantity, location, or evidence ambiguity. Automatic adoption remains unavailable; no current application flow imports a legacy database.
+7. After an approved migration tool exists, validate the resulting command receipt, record, evidence link, and audit entry before closing the recovery case. Keep the encrypted archive until the approved retention policy permits disposal.
+
+Entries with missing actor/environment identity, invalid command IDs, missing evidence or ambiguous expected versions remain quarantined. Do not generate a fresh ID and replay an uncertain historical action: it may duplicate an already completed physical operation. Synthetic acceptance covers intact quarantine, actor/environment attribution, command-receipt comparison, ambiguous evidence, and encrypted archival. The 2026-09-11 confirmation that no real unsynced records or photos require recovery means no live migration is part of Wave A.
+
+## Privileged evidence retention
+
+Ordinary Operators and Techs cannot replace or delete operational evidence. Retention is separate maintenance requiring the server secret, approval from an active Operator, a specific recorded reason, and an explicit execution flag. There is no automatic expiry or bulk deletion.
+
+Before approving deletion, verify company retention requirements, any legal hold, linked operational records and the recoverable database/media backup. This implementation does not invent a company retention period. Evidence record relationships remain in the database after byte deletion.
+
+Use `scripts/delete-evidence-with-audit.mjs` first without `--execute` to preview the exact object path, approver UUID and reason. Supply `SUPABASE_URL` and `SUPABASE_SECRET_KEY` only in the maintenance process environment. With `--execute`, the script records a Requested event, deletes through the Storage API, and records Deleted or Failed. It never deletes directly from `storage.objects`.
+
+The private event log retains the object metadata, linked photo IDs, staged checksums, approver, reason and timestamps. Client accounts cannot invoke retention functions; even the service role cannot update or delete audit rows directly. A Deleted event is rejected while the object still exists.
+
+If the process stops after deletion but before completion, inspect the existing request and object before doing anything else. Reconcile that request with `finish_evidence_retention`; do not blindly repeat a destructive operation. Unfinished Requested events require investigation. The script has not been used to delete any shared evidence during stabilization.

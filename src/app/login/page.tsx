@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { loginAction } from "@/features/auth/server/actions"
+import { safeReturnPath } from "@/features/auth/domain/return-path"
+import { PublicCacheCleanup } from "@/features/auth/components/public-cache-cleanup"
 
 export const metadata: Metadata = { title: "Sign in" }
 
@@ -16,7 +18,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>
 }) {
   const params = await searchParams
-  const returnPath = params.next?.startsWith("/") ? params.next : "/"
+  const returnPath = safeReturnPath(params.next)
 
   return (
     <main
@@ -24,6 +26,7 @@ export default async function LoginPage({
       className="flex min-h-svh items-center justify-center bg-muted p-4 sm:p-6 md:p-10"
       tabIndex={-1}
     >
+      <PublicCacheCleanup />
       <Card className="w-full max-w-sm overflow-hidden p-0 shadow-xl md:max-w-4xl">
         <CardContent className="grid p-0 md:min-h-145 md:grid-cols-2">
           <form action={loginAction} className="flex items-center p-6 sm:p-8 md:p-12">

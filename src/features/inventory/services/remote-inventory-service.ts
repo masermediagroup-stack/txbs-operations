@@ -2,6 +2,7 @@
 
 import { inventorySnapshotSchema, type InventorySnapshot, type PhotoType } from "@/features/inventory/domain/inventory"
 import type { StagedPhoto, InventoryCommandType } from "@/features/inventory/domain/shared-command"
+import { uploadEvidence } from "@/features/inventory/services/evidence-upload"
 import type {
   AddIssueCommentInput,
   AddMaterialInput,
@@ -41,14 +42,7 @@ async function stagePhoto(
   caption: string,
 ): Promise<StagedPhoto | null> {
   if (!file) return null
-  const uploadId = crypto.randomUUID()
-  const form = new FormData()
-  form.set("commandId", commandId)
-  form.set("siteId", siteId)
-  form.set("uploadId", uploadId)
-  form.set("file", file)
-  const response = await fetch("/api/inventory/uploads", { method: "POST", body: form })
-  const uploaded = await responseJson<{ id: string; fileName: string }>(response)
+  const uploaded = await uploadEvidence({ commandId, siteId, file, fileName: file.name })
   return { id: uploaded.id, fileName: uploaded.fileName, photoType, caption }
 }
 

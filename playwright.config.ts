@@ -4,7 +4,7 @@ const browserExecutablePath = process.env.PLAYWRIGHT_BROWSER_PATH;
 const testPort = process.env.PLAYWRIGHT_PORT ?? "3000";
 const testBaseUrl = `http://127.0.0.1:${testPort}`;
 const testServerCommand = process.env.PLAYWRIGHT_USE_PRODUCTION_SERVER === "1"
-  ? `npm run start -- -p ${testPort}`
+  ? `npm run start -- -p ${testPort} -H 127.0.0.1`
   : `npm run dev -- -p ${testPort}`;
 
 export default defineConfig({
@@ -15,7 +15,7 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: testBaseUrl,
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [
@@ -38,7 +38,7 @@ export default defineConfig({
   ],
   webServer: {
     command: testServerCommand,
-    env: { ...process.env, TBS_E2E_AUTH_BYPASS: "1" },
+    env: { ...process.env, TBS_CSP_ENFORCE: "1", TBS_E2E_AUTH_BYPASS: "1", TBS_RUNTIME_MODE: "test" },
     url: testBaseUrl,
     reuseExistingServer: !process.env.CI && testPort === "3000",
     timeout: 120_000,

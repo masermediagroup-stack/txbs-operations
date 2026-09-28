@@ -2,7 +2,7 @@
 
 - Completed: 2026-08-10
 - Status: Implemented
-- Source plan: [Phase 5 v2](v2.md)
+- Historical plan requirements: consolidated in [`TODO.md`](../../../TODO.md#source-coverage-and-disposition)
 
 ## Implemented behavior
 

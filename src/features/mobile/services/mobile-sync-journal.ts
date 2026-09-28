@@ -56,6 +56,8 @@ export function buildQueuedMutation(input: QueueMutationInput, now = new Date().
   const mutation = queuedMutationSchema.parse({
     id,
     clientMutationId,
+    scope: input.scope ?? "local",
+    dependsOn: input.dependsOn ?? [],
     commandType: input.commandType,
     commandVersion: MOBILE_COMMAND_VERSION,
     siteId: input.siteId,
@@ -86,13 +88,14 @@ export class MobileSyncJournal {
     return { mutations, photos, conflicts, manifest }
   }
 
-  async enqueue(input: QueueMutationInput) {
+  async enqueue(input: QueueMutationInput, commit?: (mutation: QueuedMutation, photos: QueuedPhoto[]) => Promise<void>) {
     const current = await this.persistence.listMutations()
     const clientMutationId = input.clientMutationId ?? crypto.randomUUID()
     const duplicate = current.find((mutation) => mutation.clientMutationId === clientMutationId)
     if (duplicate) return duplicate
-    const { mutation, photos } = buildQueuedMutation({ ...input, clientMutationId })
-    await this.persistence.enqueue(mutation, photos)
+    const dependsOn = [...new Set([...(input.dependsOn ?? []), ...current.filter((entry) => entry.entityIds.some((id) => input.entityIds?.includes(id))).map((entry) => entry.id)])]
+    const { mutation, photos } = buildQueuedMutation({ ...input, clientMutationId, dependsOn })
+    await (commit ? commit(mutation, photos) : this.persistence.enqueue(mutation, photos))
     return mutation
   }
 
@@ -108,9 +111,9 @@ export class MobileSyncJournal {
     return blocked
   }
 
-  async completeMutation(mutation: QueuedMutation) {
-    for (const photoId of mutation.photoIds) await this.persistence.removePhoto(photoId)
-    await this.persistence.removeMutation(mutation.id)
+  async completeMutation(mutation: QueuedMutation, mapping: Record<string, string> = {}) {
+    if (this.persistence.acknowledgeMutation) await this.persistence.acknowledgeMutation(mutation, mapping)
+    else await this.persistence.removeMutation(mutation.id)
   }
 
   async addConflict(conflict: Parameters<MobileSyncPersistence["putConflict"]>[0]) {
@@ -118,10 +121,25 @@ export class MobileSyncJournal {
   }
 
   async discardMutation(id: string) {
+    const dependents = (await this.persistence.listMutations()).filter((entry) => entry.dependsOn.includes(id))
+    if (dependents.length) throw new Error("Resolve or discard the dependent actions first. Their original action cannot be removed safely.")
     await this.persistence.removeMutation(id)
+    for (const conflict of await this.persistence.listConflicts()) {
+      if (conflict.mutationId === id) await this.persistence.removeConflict(conflict.id)
+    }
   }
 
   async discardConflict(id: string) {
+    const conflict = (await this.persistence.listConflicts()).find((item) => item.id === id)
+    if (conflict) await this.discardMutation(conflict.mutationId)
+    await this.persistence.removeConflict(id)
+  }
+
+  async retryConflict(id: string) {
+    const conflict = (await this.persistence.listConflicts()).find((item) => item.id === id)
+    const mutation = (await this.persistence.listMutations()).find((item) => item.id === conflict?.mutationId)
+    if (!mutation) throw new Error("The original command is unavailable. Export the recovery archive.")
+    await this.persistence.putMutation({ ...mutation, state: "pending", lastError: null })
     await this.persistence.removeConflict(id)
   }
 

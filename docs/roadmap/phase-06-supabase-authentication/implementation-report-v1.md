@@ -3,9 +3,7 @@
 > **Historical implementation report.** Superseded by [implementation report v2](implementation-report-v2.md) for the current Operator/Tech model.
 
 - Report date: 2026-08-12
-- Source plan: [Phase 6 v1](v1.md)
-- Temporary plan: [temporary-validation-plan-v1.md](temporary-validation-plan-v1.md)
-- Implementation plan: [implementation-plan-v1.md](implementation-plan-v1.md)
+- Historical plan requirements: consolidated in [`TODO.md`](../../../TODO.md#source-coverage-and-disposition)
 - Status: Shared demo implementation and Vercel deployment complete; single-Operator field activation remains
 
 ## Implemented behavior

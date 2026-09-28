@@ -89,6 +89,7 @@ export function prepareQueuedCommandPayload(
     payload.caption ?? payload.note,
   )
 
+  if (commandType === "field.installation.confirm") return { ...payload, photoUploads: many }
   if (commandType === "movement.create") return { ...payload, photoUploads: many }
   if (["material.add", "verification.confirm", "issue.record", "issue.comment", "outbound.depart"].includes(commandType)) {
     return { ...payload, photoUpload: many[0] ?? null }

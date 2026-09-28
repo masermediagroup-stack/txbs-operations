@@ -67,8 +67,8 @@ const formatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
-function files(form: FormData, name: string) {
-  return form.getAll(name).filter((item): item is File => item instanceof File && item.size > 0);
+function files(form: HTMLFormElement, name: string) {
+  return Array.from(form.elements).filter((element): element is HTMLInputElement => element instanceof HTMLInputElement && element.type === "file" && element.name === name).flatMap((input) => Array.from(input.files ?? [])).filter((file) => file.size > 0);
 }
 
 function locationName(
@@ -566,8 +566,7 @@ export function MovementWorkspace() {
     setError("");
     setMessage("");
     const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const evidence = files(form, "movementPhoto");
+    const evidence = files(formElement, "movementPhoto");
     try {
       if (evidence.length > 3) throw new Error("Select no more than 3 movement photos.");
       if (selectedSiteIds.length !== 1) throw new Error("Select material from one inventory Site per movement.");

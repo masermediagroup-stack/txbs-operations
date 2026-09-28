@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import { CloudOff, RefreshCw } from "lucide-react"
+import { CloudOff } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { OfflineActions } from "@/app/offline/offline-actions"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 
 export const metadata: Metadata = { title: "Offline" }
@@ -20,12 +19,9 @@ export default function OfflinePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm leading-6 text-muted-foreground">
-            Return to an Inventory screen that was already open to continue using device-local records. New pages and shared updates require a connection.
+            The open Inventory screen can continue using device-local records, but a newly opened page requires a connection.
           </p>
-          <Button render={<Link href="/inventory" />} nativeButton={false} size="lg" className="w-full">
-            <RefreshCw aria-hidden="true" data-icon="inline-start" />
-            Try Inventory again
-          </Button>
+          <OfflineActions />
         </CardContent>
       </Card>
     </main>

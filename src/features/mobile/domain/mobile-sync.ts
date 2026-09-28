@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const MOBILE_SYNC_DATABASE_VERSION = 1 as const
-export const MOBILE_COMMAND_VERSION = 1 as const
+export const MOBILE_COMMAND_VERSION = 2 as const
 
 export const mobileCommandTypes = [
   "project.status.update",
@@ -39,10 +39,13 @@ export type QueuedActor = {
 }
 
 export type QueuedMutation = {
+  createdEntities?: Record<string, import("./replay-identity").CreatedEntity>
   id: string
   clientMutationId: string
   commandType: MobileCommandType
   commandVersion: typeof MOBILE_COMMAND_VERSION
+  scope: string
+  dependsOn: string[]
   siteId: string
   actor: QueuedActor
   createdAt: string
@@ -97,10 +100,16 @@ const actorSchema: z.ZodType<QueuedActor> = z.object({
 })
 
 export const queuedMutationSchema: z.ZodType<QueuedMutation> = z.object({
+  createdEntities: z.record(z.string().uuid(), z.object({
+    kind: z.enum(["primary", "receiptLot", "receiptIssue", "movementLot", "outboundLot"]),
+    sourceId: z.string().min(1),
+  })).optional(),
   id: z.string().uuid(),
   clientMutationId: z.string().uuid(),
   commandType: z.enum(mobileCommandTypes),
   commandVersion: z.literal(MOBILE_COMMAND_VERSION),
+  scope: z.string().min(1),
+  dependsOn: z.array(z.string().uuid()),
   siteId: z.string().uuid(),
   actor: actorSchema,
   createdAt: z.string().datetime({ offset: true }),
@@ -126,6 +135,8 @@ export const syncConflictSchema: z.ZodType<SyncConflict> = z.object({
 })
 
 export type QueueMutationInput = {
+  scope?: string
+  dependsOn?: string[]
   clientMutationId?: string
   commandType: MobileCommandType
   siteId: string

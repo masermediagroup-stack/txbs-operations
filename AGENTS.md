@@ -15,3 +15,11 @@ When a card uses the TBS orange accent to distinguish its heading section, place
 ## Navigable row and card rule
 
 When a table row, list row, or card represents one navigable record, make the entire row or card a single semantic link on desktop and mobile. Do not add a separate arrow-only control to open that record. Use hover, active, and visible keyboard-focus states to communicate interactivity, and preserve Enter/Space or native link keyboard behavior. Keep separate controls only when they perform genuinely different actions.
+
+## Development planning rule
+
+Use root `TODO.md` as the sole active development plan and checklist. Consult it before starting development work and update the relevant stable task IDs when scope, status, dependencies, acceptance evidence, or completion changes. Do not create separate phase plans, wave checklists, or roadmap versions; implementation reports, audits, runbooks, ADRs, and test artifacts remain supporting evidence.
+
+## Skill-use guardrail
+
+Use a skill only when the user explicitly requests it or the current task materially needs its specialized workflow or current platform guidance. Use the smallest relevant set, stop using a skill when its scoped work is complete, and handle ordinary repository inspection, editing, and validation directly. Do not invoke skills from keyword matches alone or add skill-driven process that does not advance the active `TODO.md` task.

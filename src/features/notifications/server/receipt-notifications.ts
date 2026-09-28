@@ -1,20 +1,17 @@
 import "server-only"
 
-import type { SupabaseClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 
 import { buildReceiptNotificationEmail, receiptNotificationClaimSchema } from "@/features/notifications/domain/receipt-email"
-import type { Database } from "@/lib/supabase/database.types"
+import { createAdminClient } from "@/lib/supabase/admin"
 
-export async function dispatchReceiptNotifications(
-  supabase: SupabaseClient<Database>,
-  receiptId: string,
-) {
+export async function dispatchReceiptNotifications(receiptId: string) {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL
   if (!apiKey || !from) return { sent: 0, failed: 0, configured: false }
 
-  const { data, error } = await supabase.rpc("claim_receipt_notifications_v1", {
+  const admin = createAdminClient()
+  const { data, error } = await admin.rpc("claim_receipt_notifications_v1", {
     p_receipt_id: receiptId,
   })
   if (error) throw error
@@ -37,7 +34,7 @@ export async function dispatchReceiptNotifications(
     }, { idempotencyKey: `receipt-received/${claim.receipt.id}/${delivery.id}` })
 
     const status = sendError ? "Failed" : "Sent"
-    const { error: finishError } = await supabase.rpc("finish_receipt_notification_v1", {
+    const { error: finishError } = await admin.rpc("finish_receipt_notification_v1", {
       p_delivery_id: delivery.id,
       p_status: status,
       p_provider_message_id: response?.id ?? null,

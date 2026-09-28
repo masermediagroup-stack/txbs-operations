@@ -24,8 +24,8 @@ import { FieldAssignmentAction } from "@/features/field-work/components/field-as
 
 const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" })
 
-function mutationId(action: string) {
-  return `${action}-${crypto.randomUUID()}`
+function mutationId() {
+  return crypto.randomUUID()
 }
 
 function stateVariant(state: OutboundBatch["state"]) {
@@ -57,9 +57,9 @@ function BatchActionSheet({ batch, action }: { batch: OutboundBatch; action: "re
     const operatorName = String(form.get("operatorName") ?? "")
     const note = String(form.get("note") ?? "")
     try {
-      if (action === "ready") await markOutboundReady({ batchId: batch.id, operatorName, clientMutationId: mutationId("outbound-ready") })
-      if (action === "cancel") await cancelOutboundBatch({ batchId: batch.id, operatorName, note, clientMutationId: mutationId("outbound-cancel") })
-      if (action === "reverse") await reverseOutboundBatch({ batchId: batch.id, operatorName, note, clientMutationId: mutationId("outbound-reverse") })
+      if (action === "ready") await markOutboundReady({ batchId: batch.id, operatorName, clientMutationId: mutationId() })
+      if (action === "cancel") await cancelOutboundBatch({ batchId: batch.id, operatorName, note, clientMutationId: mutationId() })
+      if (action === "reverse") await reverseOutboundBatch({ batchId: batch.id, operatorName, note, clientMutationId: mutationId() })
       if (action === "depart") {
         const item = form.get("proofPhoto")
         await departOutboundBatch({
@@ -69,7 +69,7 @@ function BatchActionSheet({ batch, action }: { batch: OutboundBatch; action: "re
           carrierReference: String(form.get("carrierReference") ?? ""),
           driverReference: String(form.get("driverReference") ?? ""),
           file: item instanceof File && item.size ? item : null,
-          clientMutationId: mutationId("outbound-depart"),
+          clientMutationId: mutationId(),
         })
       }
       setOpen(false)
@@ -197,7 +197,7 @@ export function OutboundWorkspace() {
       await createOutboundBatch({
         projectId,
         operatorName,
-        clientMutationId: mutationId("outbound-plan"),
+        clientMutationId: mutationId(),
         lines: selectedLots.map((lot) => ({ lotId: lot.id, quantity: lot.quantity === null ? null : Number(selected[lot.id]), expectedVersion: lot.version })),
       })
       setSelected({})

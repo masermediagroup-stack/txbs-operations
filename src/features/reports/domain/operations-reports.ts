@@ -492,7 +492,8 @@ export type CsvValue = string | number | boolean | null;
 
 export function toCsv(headers: string[], rows: CsvValue[][]) {
   const cell = (value: CsvValue) => {
-    const text = value === null ? "Unknown" : String(value);
+    const raw = value === null ? "Unknown" : String(value);
+    const text = typeof value === "string" && /^[\s\u0000-\u001f]*[=+@-]|^[\t\r\n]/.test(raw) ? `'${raw}` : raw;
     return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
   };
   return [headers, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");

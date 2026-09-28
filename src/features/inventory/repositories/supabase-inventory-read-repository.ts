@@ -1,4 +1,5 @@
 import "server-only"
+import { readAllRows } from "@/lib/supabase/pagination"
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 
@@ -62,28 +63,28 @@ export async function loadSupabaseInventorySnapshot(
     activityResult,
     commandResult,
   ] = await Promise.all([
-    supabase.from("sites").select("*").order("name"),
-    supabase.from("storage_locations").select("*").order("name"),
-    supabase.from("projects").select("*").order("updated_at", { ascending: false }),
-    supabase.from("project_aliases").select("*").order("value"),
-    supabase.from("project_purchase_orders").select("*").order("purchase_order"),
-    supabase.from("project_notes").select("*").order("display_order"),
-    supabase.from("material_groups").select("*").order("name"),
-    supabase.from("material_lots").select("*").order("updated_at", { ascending: false }),
-    supabase.from("receipts").select("*").order("updated_at", { ascending: false }),
-    supabase.from("receipt_lines").select("*").eq("active", true),
-    supabase.from("material_movements").select("*").order("occurred_at", { ascending: false }),
-    supabase.from("movement_lines").select("*"),
-    supabase.from("outbound_batches").select("*").order("planned_at", { ascending: false }),
-    supabase.from("outbound_lines").select("*"),
-    supabase.from("issues").select("*").order("updated_at", { ascending: false }),
-    supabase.from("issue_comments").select("*").order("created_at"),
-    supabase.from("issue_transitions").select("*").order("occurred_at"),
-    supabase.from("photos").select("*").order("uploaded_at"),
-    supabase.from("verification_records").select("*").order("verified_at"),
-    supabase.from("verification_photos").select("*"),
-    supabase.from("activity_events").select("*").order("occurred_at", { ascending: false }),
-    supabase.from("command_receipts").select("command_id,created_at"),
+    readAllRows(supabase.from("sites").select("*").order("name").order("id")),
+    readAllRows(supabase.from("storage_locations").select("*").order("name").order("id")),
+    readAllRows(supabase.from("projects").select("*").order("updated_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("project_aliases").select("*").order("value").order("id")),
+    readAllRows(supabase.from("project_purchase_orders").select("*").order("purchase_order").order("id")),
+    readAllRows(supabase.from("project_notes").select("*").order("display_order").order("id")),
+    readAllRows(supabase.from("material_groups").select("*").order("name").order("id")),
+    readAllRows(supabase.from("material_lots").select("*").order("updated_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("receipts").select("*").order("updated_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("receipt_lines").select("*").eq("active", true).order("id")),
+    readAllRows(supabase.from("material_movements").select("*").order("occurred_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("movement_lines").select("*").order("id")),
+    readAllRows(supabase.from("outbound_batches").select("*").order("planned_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("outbound_lines").select("*").order("id")),
+    readAllRows(supabase.from("issues").select("*").order("updated_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("issue_comments").select("*").order("created_at").order("id")),
+    readAllRows(supabase.from("issue_transitions").select("*").order("occurred_at").order("id")),
+    readAllRows(supabase.from("photos").select("*").order("uploaded_at").order("id")),
+    readAllRows(supabase.from("verification_records").select("*").order("verified_at").order("id")),
+    readAllRows(supabase.from("verification_photos").select("*").order("verification_id").order("photo_id")),
+    readAllRows(supabase.from("activity_events").select("*").order("occurred_at", { ascending: false }).order("id")),
+    readAllRows(supabase.from("command_receipts").select("command_id,created_at").order("command_id")),
   ])
 
   const sites = rows(siteResult, "sites")

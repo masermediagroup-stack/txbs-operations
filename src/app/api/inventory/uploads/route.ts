@@ -30,6 +30,7 @@ function safeFileName(name: string) {
 export async function POST(request: Request) {
   const operator = await getCurrentOperator()
   if (!operator) return NextResponse.json({ error: "Authentication is required." }, { status: 401 })
+  if (request.headers.has("x-tbs-actor") && request.headers.get("x-tbs-actor") !== operator.id) return NextResponse.json({ error: "The queued photo belongs to another account." }, { status: 403 })
   if (!operator.active) return NextResponse.json({ error: "This account is not active." }, { status: 403 })
   if (request.headers.get("x-tbs-queued-upload") === "ticket") {
     const parsed = ticketSchema.safeParse(await request.json().catch(() => null))
@@ -74,9 +75,17 @@ export async function POST(request: Request) {
       if (stageError) return NextResponse.json({ error: stageError.message }, { status: 403 })
     }
 
+    if (existing) {
+      const { data: object } = await supabase.storage.from("operational-media").download(objectPath)
+      if (object) {
+        const bytes = Buffer.from(await object.arrayBuffer())
+        if (bytes.length !== input.size || createHash("sha256").update(bytes).digest("hex") !== input.checksum) return NextResponse.json({ error: "Existing evidence differs from this file and cannot be overwritten." }, { status: 409 })
+        return NextResponse.json({ id: input.uploadId, fileName, objectPath, uploaded: true })
+      }
+    }
     const { data: signed, error: signedError } = await supabase.storage
       .from("operational-media")
-      .createSignedUploadUrl(objectPath, { upsert: Boolean(existing) })
+      .createSignedUploadUrl(objectPath, { upsert: false })
     if (signedError || !signed) return NextResponse.json({ error: signedError?.message ?? "A private upload ticket could not be created." }, { status: 403 })
 
     return NextResponse.json({
@@ -84,7 +93,8 @@ export async function POST(request: Request) {
       fileName,
       objectPath,
       token: signed.token,
-      upsert: Boolean(existing),
+      signedUrl: signed.signedUrl,
+      upsert: false,
     })
   }
 

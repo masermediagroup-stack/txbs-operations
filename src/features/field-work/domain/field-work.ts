@@ -81,6 +81,7 @@ const installationCommandSchema = z.object({
   expectedVersion: z.number().int().positive(),
   outcome: z.enum(installationOutcomes),
   notes: z.string(),
+  unknownQuantityConfirmed: z.boolean().optional(),
   lines: z.array(z.object({ outboundLineId: uuid, installedQuantity: z.number().int().nonnegative() })).min(1),
   photoUploads: z.array(stagedPhotoSchema).max(3),
   issue: z.object({
@@ -90,6 +91,12 @@ const installationCommandSchema = z.object({
     description: z.string(),
   }).nullable(),
 }).superRefine((value, context) => {
+  if (new Set(value.lines.map((line) => line.outboundLineId)).size !== value.lines.length) {
+    context.addIssue({ code: "custom", path: ["lines"], message: "Submit each delivered line exactly once." })
+  }
+  if (value.outcome === "Blocked" && !value.issue) {
+    context.addIssue({ code: "custom", path: ["issue"], message: "Blocked installation requires a linked Issue." })
+  }
   if (value.issue?.type === "Damaged" && value.photoUploads.length === 0) {
     context.addIssue({ code: "custom", path: ["photoUploads"], message: "Damaged field Issues require at least one photo." })
   }

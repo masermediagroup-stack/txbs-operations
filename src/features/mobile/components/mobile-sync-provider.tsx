@@ -5,8 +5,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { MobileCommandType, QueueMutationInput, QueuedActor, QueuedMutation, QueuedPhoto, SyncConflict } from "@/features/mobile/domain/mobile-sync"
 import { IndexedDbMobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 import { MobileSyncJournal } from "@/features/mobile/services/mobile-sync-journal"
-import { prepareQueuedCommandPayload, queuedPhotoTicketRequest, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { prepareQueuedCommandPayload, sameOriginApiUrl } from "@/features/mobile/services/mobile-sync-transport"
+import { uploadEvidence, type EvidenceTransfer } from "@/features/inventory/services/evidence-upload"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+
+import { hasLegacyDeviceData, withDeviceLock } from "@/features/mobile/repositories/scoped-database"
+import { resolveReplayIdentities, type ReplayEntities } from "@/features/mobile/domain/replay-identity"
+import { replayQueueDecision, requireReplaySession } from "@/features/mobile/domain/replay-guard"
+import { parseFieldWorkCommand } from "@/features/field-work/domain/field-work"
+import { parseInventoryCommand } from "@/features/inventory/domain/shared-command"
 
 const SYNC_TAG = "tbs-operations-sync"
 
@@ -17,7 +24,7 @@ type SyncOperator = {
   role: "Operator" | "Tech"
 } | null
 
-type QueueCommandInput = Omit<QueueMutationInput, "actor">
+export type QueueCommandInput = Omit<QueueMutationInput, "actor" | "scope">
 
 type StorageState = {
   usage: number | null
@@ -26,6 +33,11 @@ type StorageState = {
 }
 
 type MobileSyncContextValue = {
+  activeTransfers: EvidenceTransfer[]
+  legacyDataLocked: boolean
+  scope: string
+  operator: SyncOperator
+  retryConflict(id: string): Promise<void>
   isOnline: boolean
   isSupported: boolean
   isSyncing: boolean
@@ -39,7 +51,7 @@ type MobileSyncContextValue = {
   lastSyncAt: string | null
   syncError: string | null
   storage: StorageState
-  queueCommand(input: QueueCommandInput): Promise<QueuedMutation>
+  queueCommand(input: QueueCommandInput, commit?: (mutation: QueuedMutation, photos: QueuedPhoto[]) => Promise<void>): Promise<QueuedMutation>
   syncNow(): Promise<void>
   prepareDevice(): Promise<void>
   registerInventoryCache(siteIds: string[], inventoryRevision: number): void
@@ -61,8 +73,11 @@ function actorSnapshot(operator: SyncOperator): QueuedActor {
     : { userId: null, email: null, displayName: "Local operator", role: null }
 }
 
-export function MobileSyncProvider({ children, operator }: { children: ReactNode; operator: SyncOperator }) {
-  const journal = useMemo(() => new MobileSyncJournal(new IndexedDbMobileSyncPersistence()), [])
+export function MobileSyncProvider({ children, operator, scope = "local" }: { children: ReactNode; operator: SyncOperator; scope?: string }) {
+  const journal = useMemo(() => new MobileSyncJournal(new IndexedDbMobileSyncPersistence(scope)), [scope])
+  const syncingRef = useRef(false)
+  const identityRef = useRef(operator?.id)
+  useEffect(() => { identityRef.current = operator?.id }, [operator])
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
   const inventoryCacheRef = useRef({ siteIds: [] as string[], inventoryRevision: 0 })
   const [isOnline, setIsOnline] = useState(true)
@@ -75,6 +90,17 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
   const [conflicts, setConflicts] = useState<SyncConflict[]>([])
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [legacyDataLocked, setLegacyDataLocked] = useState(false)
+  const [activeTransfers, setActiveTransfers] = useState<EvidenceTransfer[]>([])
+
+  useEffect(() => {
+    const update = (event: Event) => {
+      const transfer = (event as CustomEvent<EvidenceTransfer>).detail
+      setActiveTransfers((current) => [...current.filter((item) => item.id !== transfer.id), ...(transfer.phase === "uploading" ? [transfer] : [])])
+    }
+    window.addEventListener("tbs-evidence-transfer", update)
+    return () => window.removeEventListener("tbs-evidence-transfer", update)
+  }, [])
   const [storage, setStorage] = useState<StorageState>({ usage: null, quota: null, persisted: null })
 
   const refresh = useCallback(async () => {
@@ -84,6 +110,17 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
     setConflicts(snapshot.conflicts)
     setPreparedAt(snapshot.manifest?.preparedAt ?? null)
   }, [journal])
+
+  useEffect(() => {
+    if (!operator) return
+    const { data } = createSupabaseClient().auth.onAuthStateChange((_event, session) => {
+      if (session?.user.id !== operator.id) {
+        identityRef.current = undefined
+        window.location.replace("/login")
+      }
+    })
+    return () => data.subscription.unsubscribe()
+  }, [operator])
 
   const refreshStorage = useCallback(async () => {
     if (!navigator.storage) return
@@ -95,28 +132,31 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
   }, [])
 
   const syncNow = useCallback(async () => {
+    if (!operator || syncingRef.current) return
     setSyncError(null)
     if (!navigator.onLine) {
       setSyncError("This device is offline. Pending work will remain on this device.")
       return
     }
+    syncingRef.current = true
     setIsSyncing(true)
     try {
+      await withDeviceLock(scope, async () => {
       const snapshot = await journal.snapshot()
-      for (const mutation of snapshot.mutations.toSorted((left, right) => left.createdAt.localeCompare(right.createdAt))) {
+      for (const original of snapshot.mutations.toSorted((left, right) => left.createdAt.localeCompare(right.createdAt))) {
+        const current = await journal.snapshot()
+        const mutation = current.mutations.find((entry) => entry.id === original.id)
+        if (!mutation) continue
+        if (identityRef.current !== operator.id) throw new Error("Queued work belongs to another account or environment and remains locked.")
+        if (replayQueueDecision(mutation, current.mutations, current.conflicts, operator.id, scope) !== "ready") continue
+        const session = await fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : null) as { userId: string } | null
+        requireReplaySession(session?.userId, operator.id)
         const mutationPhotos = snapshot.photos.filter((photo) => photo.mutationId === mutation.id)
         const uploadById = new Map<string, { id: string; fileName: string }>()
         try {
           for (const photo of mutationPhotos) {
-            const ticketRequest = await queuedPhotoTicketRequest(photo, mutation.clientMutationId, mutation.siteId, window.location.href)
-            const response = await fetch(ticketRequest.url, ticketRequest.init)
-            const ticket = await response.json().catch(() => ({ error: `The queued photo ticket returned HTTP ${response.status}.` })) as { id?: string; fileName?: string; objectPath?: string; token?: string; upsert?: boolean; error?: string }
-            if (!response.ok || !ticket.id || !ticket.fileName || !ticket.objectPath || !ticket.token) throw new Error(ticket.error ?? "A queued photo ticket could not be created.")
-            const { error: uploadError } = await createSupabaseClient().storage
-              .from("operational-media")
-              .uploadToSignedUrl(ticket.objectPath, ticket.token, ticketRequest.bytes, { contentType: photo.contentType, upsert: ticket.upsert ?? false })
-            if (uploadError) throw new Error(uploadError.message)
-            uploadById.set(photo.id, { id: ticket.id, fileName: ticket.fileName })
+            const uploaded = await uploadEvidence({ commandId: mutation.clientMutationId, siteId: mutation.siteId, uploadId: photo.id, file: photo.blob, fileName: photo.fileName, actorId: operator.id })
+            uploadById.set(photo.id, uploaded)
           }
           const payload = prepareQueuedCommandPayload(mutation.commandType, mutation.payload, uploadById)
           const endpoint = mutation.commandType.startsWith("field.")
@@ -124,10 +164,10 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
             : "/api/inventory/commands/v1"
           const response = await fetch(sameOriginApiUrl(endpoint, window.location.href), {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "X-TBS-Actor": operator.id },
             body: JSON.stringify({ commandId: mutation.clientMutationId, commandType: mutation.commandType, siteId: mutation.siteId, payload }),
           })
-          const body = await response.json().catch(() => ({ error: `The queued command returned HTTP ${response.status}.` })) as { error?: string }
+          const body = await response.json().catch(() => ({ error: `The queued command returned HTTP ${response.status}.` })) as { error?: string; entityId?: string; entities?: ReplayEntities }
           if (response.status === 409) {
             await journal.addConflict({
               id: crypto.randomUUID(),
@@ -139,11 +179,11 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
               serverSummary: body.error ?? "The shared version is newer than this device's cached version.",
               createdAt: new Date().toISOString(),
             })
-            await journal.completeMutation(mutation)
-            continue
+            await journal.markBlocked(mutation, body.error ?? "Shared record changed. Review the conflict before retrying.")
+            break
           }
           if (!response.ok) throw new Error(body.error ?? "A queued action could not be synchronized.")
-          await journal.completeMutation(mutation)
+          await journal.completeMutation(mutation, resolveReplayIdentities(mutation, body.entities ?? { primary: body.entityId ? { entity: body.entityId } : {} }))
         } catch (cause) {
           const detail = cause instanceof Error ? cause.message : "The browser could not complete the request."
           const message = `This queued ${commandLabel(mutation.commandType).toLowerCase()} could not sync. ${detail}`
@@ -153,11 +193,16 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
         }
       }
       setLastSyncAt(new Date().toISOString())
+      window.setTimeout(() => window.dispatchEvent(new Event("tbs-sync-complete")), 0)
+      })
+    } catch (cause) {
+      setSyncError(cause instanceof Error ? cause.message : "Sync could not finish. Work remains on this device.")
     } finally {
+      syncingRef.current = false
       setIsSyncing(false)
       await refresh()
     }
-  }, [journal, refresh])
+  }, [journal, operator, refresh, scope])
 
   useEffect(() => {
     const initialize = window.setTimeout(() => {
@@ -165,6 +210,7 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
       setIsSupported("serviceWorker" in navigator)
       void refresh()
       void refreshStorage()
+      void hasLegacyDeviceData().then(setLegacyDataLocked).catch(() => undefined)
     }, 0)
 
     const online = () => {
@@ -228,15 +274,26 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
     }
   }, [syncNow])
 
-  const queueCommand = useCallback(async (input: QueueCommandInput) => {
+  const queueCommand = useCallback(async (input: QueueCommandInput, commit?: (mutation: QueuedMutation, photos: QueuedPhoto[]) => Promise<void>) => {
+    return withDeviceLock(scope, async () => {
     const actor = actorSnapshot(operator)
     if (!operator && typeof input.payload.operatorName === "string" && input.payload.operatorName.trim()) actor.displayName = input.payload.operatorName.trim()
-    const mutation = await journal.enqueue({ ...input, actor })
+    const mutation = await journal.enqueue({ ...input, actor, scope }, async (entry, photos) => {
+      if (!entry.commandType.startsWith("field.")) {
+        const payload = prepareQueuedCommandPayload(entry.commandType, entry.payload, new Map(photos.map((photo) => [photo.id, { id: photo.id, fileName: photo.fileName }])))
+        parseInventoryCommand({ commandId: entry.clientMutationId, commandType: entry.commandType, siteId: entry.siteId, payload })
+      } else {
+        parseFieldWorkCommand({ commandId: entry.clientMutationId, commandType: entry.commandType, siteId: entry.siteId, payload: { ...entry.payload, photoUploads: photos.map((photo) => ({ id: photo.id, fileName: photo.fileName })) } })
+      }
+      if (commit) await commit(entry, photos)
+      else await new IndexedDbMobileSyncPersistence(scope).enqueue(entry, photos)
+    })
     await refresh()
     const registration = registrationRef.current as RegistrationWithSync | null
     if (registration?.sync) await registration.sync.register(SYNC_TAG).catch(() => undefined)
     return mutation
-  }, [journal, operator, refresh])
+    })
+  }, [journal, operator, refresh, scope])
 
   const prepareDevice = useCallback(async () => {
     setSyncError(null)
@@ -261,19 +318,29 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
   }, [])
 
   const discardMutation = useCallback(async (id: string) => {
-    await journal.discardMutation(id)
-    await refresh()
-  }, [journal, refresh])
+    try { await withDeviceLock(scope, () => journal.discardMutation(id)); await refresh() }
+    catch (cause) { setSyncError(cause instanceof Error ? cause.message : "Could not discard this action.") }
+  }, [journal, refresh, scope])
 
   const discardConflict = useCallback(async (id: string) => {
-    await journal.discardConflict(id)
-    await refresh()
-  }, [journal, refresh])
+    try { await withDeviceLock(scope, () => journal.discardConflict(id)); await refresh() }
+    catch (cause) { setSyncError(cause instanceof Error ? cause.message : "Could not discard this conflict.") }
+  }, [journal, refresh, scope])
 
-  const exportJournal = useCallback(() => journal.export(), [journal])
+  const retryConflict = useCallback(async (id: string) => {
+    try { await withDeviceLock(scope, () => journal.retryConflict(id)); await refresh() }
+    catch (cause) { setSyncError(cause instanceof Error ? cause.message : "Could not retry this conflict.") }
+  }, [journal, refresh, scope])
+
+  const exportJournal = useCallback(() => withDeviceLock(scope, () => journal.export()), [journal, scope])
 
   const pendingEntityIds = useMemo(() => new Set(mutations.flatMap((mutation) => mutation.entityIds)), [mutations])
   const value = useMemo<MobileSyncContextValue>(() => ({
+    activeTransfers,
+    legacyDataLocked,
+    scope,
+    operator,
+    retryConflict,
     isOnline,
     isSupported,
     isSyncing,
@@ -295,7 +362,7 @@ export function MobileSyncProvider({ children, operator }: { children: ReactNode
     discardMutation,
     discardConflict,
     exportJournal,
-  }), [applyUpdate, conflicts, discardConflict, discardMutation, exportJournal, isOnline, isSupported, isSyncing, lastSyncAt, mutations, operator, pendingEntityIds, photos, prepareDevice, preparedAt, queueCommand, registerInventoryCache, storage, syncError, syncNow, updateAvailable])
+  }), [activeTransfers, legacyDataLocked, scope, retryConflict, applyUpdate, conflicts, discardConflict, discardMutation, exportJournal, isOnline, isSupported, isSyncing, lastSyncAt, mutations, operator, pendingEntityIds, photos, prepareDevice, preparedAt, queueCommand, registerInventoryCache, storage, syncError, syncNow, updateAvailable])
 
   return <MobileSyncContext.Provider value={value}>{children}</MobileSyncContext.Provider>
 }

@@ -2,7 +2,7 @@
 
 - Document purpose: Explain what TBS Operations is, how it works today, how a team should operate it, and how the product will expand.
 - Audience: TBS leadership, Operators, Techs, implementation partners, and future maintainers.
-- Current planning baseline: August 19, 2026
+- Current planning baseline: September 16, 2026
 - Source of truth: The current repository and database migrations take priority over older phase documents.
 
 ## 1. Executive summary
@@ -403,7 +403,7 @@ Production-like media is stored in a private Supabase Storage bucket. The browse
 - `/projects` — future cross-operational Project Hub.
 - `/vendors` — future Supplier/Vendor functionality.
 
-A visible route does not mean its full workflow is implemented. The roadmap and current implementation report determine launch status.
+A visible route does not mean its full workflow is implemented. Root `TODO.md` and the current implementation evidence determine launch status.
 
 ## 13. How a team should run the system
 
@@ -442,7 +442,7 @@ These are responsibilities, not an account hierarchy. People may combine several
 **Product/engineering maintainer**
 
 - Treats the repository as authoritative.
-- Creates versioned migrations and phase plans.
+- Creates versioned migrations and maintains the stable task IDs in root `TODO.md`.
 - Preserves the design system and existing user flows.
 - Tests desktop, mobile, accessibility, offline behavior, and authorization.
 - Publishes implementation reports and rollback notes.
@@ -466,7 +466,7 @@ These are responsibilities, not an account hierarchy. People may combine several
 ## 14. Release and change-management process
 
 1. Audit the current repository and design system.
-2. Write or update a versioned implementation plan.
+2. Review and update the applicable stable task IDs in root `TODO.md`.
 3. Identify current patterns to reuse.
 4. Implement the smallest complete workflow.
 5. Add or update database migrations.
@@ -477,7 +477,7 @@ These are responsibilities, not an account hierarchy. People may combine several
 10. Perform field-style desktop/mobile acceptance.
 11. Publish an implementation report with deviations, validation, risks, and rollback notes.
 
-Major changes create a new phase-plan version. Earlier plans remain as decision history and are not silently rewritten.
+Major changes update `TODO.md` in place with their dependencies, acceptance criteria, and source decision. Implementation reports preserve delivered behavior and evidence.
 
 ## 15. Current limitations and open operational items
 
@@ -492,7 +492,9 @@ Major changes create a new phase-plan version. Earlier plans remain as decision 
 - Phase 10 Reporting is implemented but should continue field acceptance and expand with later modules.
 - Temporary data requires a deliberate export/import or fresh-environment decision before company production cutover.
 
-## 16. Roadmap status
+## 16. Development status snapshot
+
+Root `TODO.md` is authoritative for current priority, remaining acceptance, dependencies, gates, and later development. This section summarizes delivered capabilities and standing gates for handbook readers.
 
 ### Implemented phases
 
@@ -551,7 +553,7 @@ When approved, QR values will contain opaque identifiers or short application UR
 
 **Phase 9 — Yard Map**
 
-Blocked until TBS confirms a Site diagram and location naming list. The future map will be an accessible, data-driven SVG linked to real Storage Location IDs. The existing Storage list remains canonical. The next plan must reflect eight Lavon Conex containers.
+Blocked until TBS confirms a Site diagram and location naming list. The future map will be an accessible, data-driven SVG linked to real Storage Location IDs. The existing Storage list remains canonical. `M-01` and `M-02` in root `TODO.md` require the current configurable count, presently eight Lavon Conex containers.
 
 ## 17. Long-term expansion phases
 
@@ -644,9 +646,9 @@ The goal is not simply to digitize forms. The goal is a trustworthy operational 
 
 ## 20. Related documentation
 
-- Roadmap index: `docs/roadmap/README.md`
+- Development game plan: `TODO.md`
+- Implementation evidence index: `docs/roadmap/README.md`
 - Domain glossary: `CONTEXT.md`
-- Operator/Tech authorization plan: `docs/roadmap/phase-06-supabase-authentication/implementation-plan-v2.md`
+- Operator/Tech authorization evidence: `docs/roadmap/phase-06-supabase-authentication/implementation-report-v2.md`
 - Mobile implementation report: `docs/roadmap/phase-07-mobile-yard-companion/implementation-report-v1.md`
 - Reporting implementation report: `docs/roadmap/phase-10-reporting-intelligence/implementation-report-v1.md`
-- Procurement and long-term roadmap: `docs/roadmap/procurement-and-long-term-roadmap-v1.md`

@@ -10,7 +10,9 @@ import type { InventorySnapshot } from "@/features/inventory/domain/inventory"
 import { IndexedDbInventoryPersistence } from "@/features/inventory/repositories/indexeddb-inventory-persistence"
 import { createInventoryService, type AddIssueCommentInput, type AddMaterialInput, type AssignIssueInput, type CancelOutboundBatchInput, type CreateOutboundBatchInput, type DepartOutboundBatchInput, type MarkOutboundReadyInput, type MoveMaterialInput, type RecordIssueInput, type ReverseMovementInput, type ReverseOutboundBatchInput, type SaveReceiptDraftInput, type TransitionIssueInput, type UpdateProjectStatusInput, type VerifyLotInput } from "@/features/inventory/services/inventory-service"
 import { createRemoteInventoryService } from "@/features/inventory/services/remote-inventory-service"
-import { useMobileSync } from "@/features/mobile/components/mobile-sync-provider"
+import { useMobileSync, type QueueCommandInput } from "@/features/mobile/components/mobile-sync-provider"
+import { withDeviceLock } from "@/features/mobile/repositories/scoped-database"
+import { IndexedDbMobileSyncPersistence } from "@/features/mobile/repositories/mobile-sync-persistence"
 
 const SNAPSHOT_KEY = ["inventory", "snapshot"] as const
 
@@ -46,8 +48,9 @@ const InventoryContext = createContext<InventoryContextValue | null>(null)
 
 function InventoryState({ seed, backend, children }: { seed: InventorySnapshot; backend: "local" | "supabase"; children: ReactNode }) {
   const queryClient = useQueryClient()
-  const { isOnline, queueCommand, registerInventoryCache } = useMobileSync()
-  const persistence = useMemo(() => new IndexedDbInventoryPersistence(), [])
+  const { isOnline, queueCommand, registerInventoryCache, scope, mutations } = useMobileSync()
+  const persistence = useMemo(() => new IndexedDbInventoryPersistence(scope), [scope])
+  const journalPersistence = useMemo(() => new IndexedDbMobileSyncPersistence(scope), [scope])
   const localService = useMemo(() => createInventoryService(persistence, seed), [persistence, seed])
   const remoteService = useMemo(() => createRemoteInventoryService(
     () => queryClient.getQueryData<InventorySnapshot>(SNAPSHOT_KEY) ?? seed,
@@ -55,7 +58,12 @@ function InventoryState({ seed, backend, children }: { seed: InventorySnapshot; 
   const service = backend === "supabase" && isOnline ? remoteService : localService
   const query = useQuery({
     queryKey: SNAPSHOT_KEY,
-    queryFn: service.load,
+    queryFn: async () => {
+      // On reload the React journal state may not have hydrated yet.
+      const pending = backend === "supabase" ? await journalPersistence.listMutations() : []
+      return backend === "supabase" && (!navigator.onLine || pending.length > 0) ? persistence.requirePreparedSnapshot() : service.load()
+    },
+    networkMode: "always",
     initialData: initialInventorySnapshot(backend, seed),
     refetchOnMount: "always",
     staleTime: 0,
@@ -74,110 +82,117 @@ function InventoryState({ seed, backend, children }: { seed: InventorySnapshot; 
   }, [query.data, registerInventoryCache])
 
   useEffect(() => {
-    if (backend !== "supabase" || !isOnline || !query.data) return
-    void persistence.getAllPhotos().then((photos) => persistence.replace(query.data, photos))
-  }, [backend, isOnline, persistence, query.data])
+    if (backend !== "supabase" || !isOnline || !query.data || mutations.length) return
+    void withDeviceLock(scope, async () => {
+      if ((await journalPersistence.listMutations()).length) return
+      await persistence.cacheSharedSnapshot(query.data)
+    }).catch(() => undefined)
+  }, [backend, isOnline, journalPersistence, mutations.length, persistence, query.data, scope])
 
-  const queueOffline = useCallback(async (input: Parameters<typeof queueCommand>[0]) => {
-    if (isOnline) return
-    await queueCommand(input)
-  }, [isOnline, queueCommand])
+  useEffect(() => {
+    if (backend === "supabase") void queryClient.invalidateQueries({ queryKey: SNAPSHOT_KEY })
+  }, [backend, isOnline, queryClient])
+
+  useEffect(() => {
+    const refresh = () => { void queryClient.invalidateQueries() }
+    window.addEventListener("tbs-sync-complete", refresh)
+    return () => window.removeEventListener("tbs-sync-complete", refresh)
+  }, [queryClient])
+
+  const execute = useCallback(async (input: QueueCommandInput | null, operation: () => Promise<InventorySnapshot>) => {
+    if (isOnline) {
+      if (backend === "supabase" && mutations.length) throw new Error("Sync or resolve pending work before making another shared change.")
+      return apply(operation())
+    }
+    if (!input) throw new Error("The record is unavailable. Reconnect and refresh before changing it.")
+    let next: InventorySnapshot | undefined
+    await queueCommand(input, (mutation, photos) => persistence.withQueuedCommand(mutation, photos, async () => { next = await operation() }))
+    if (!next) throw new Error("This action is already queued. Refresh its status before repeating it.")
+    queryClient.setQueryData(SNAPSHOT_KEY, next)
+    return next
+  }, [apply, backend, isOnline, mutations.length, persistence, queryClient, queueCommand])
 
   const value = useMemo<InventoryContextValue>(() => ({
     snapshot,
     isHydrating: query.isFetching && snapshot.revision === 0,
     updateProjectStatus: async (input) => {
       const project = snapshot.projects.find((item) => item.id === input.projectId)
-      await apply(service.updateProjectStatus(input))
-      if (project) await queueOffline({
+      await execute(project ? {
         clientMutationId: input.clientMutationId,
         commandType: "project.status.update",
         siteId: project.siteId,
         entityIds: [project.id],
         entityBaseVersions: { [project.id]: input.expectedVersion },
         payload: input as unknown as Record<string, unknown>,
-      })
+      } : null, () => service.updateProjectStatus(input))
     },
     addMaterial: async (input) => {
       const project = snapshot.projects.find((item) => item.id === input.projectId)
-      await apply(service.addMaterial(input))
-      if (project) await queueOffline({ commandType: "material.add", siteId: project.siteId, entityIds: [input.projectId], payload: input as unknown as Record<string, unknown> })
+      await execute(project ? { commandType: "material.add", siteId: project.siteId, entityIds: [input.projectId], payload: input as unknown as Record<string, unknown> } : null, () => service.addMaterial(input))
     },
     verifyLot: async (input) => {
       const lot = snapshot.lots.find((item) => item.id === input.lotId)
-      await apply(service.verifyLot(input))
-      if (lot) await queueOffline({ commandType: "verification.confirm", siteId: lot.siteId, entityIds: [lot.id], entityBaseVersions: { [lot.id]: lot.version }, payload: input as unknown as Record<string, unknown> })
+      await execute(lot ? { commandType: "verification.confirm", siteId: lot.siteId, entityIds: [lot.id], entityBaseVersions: { [lot.id]: lot.version }, payload: { ...input, expectedVersion: lot.version } as unknown as Record<string, unknown> } : null, () => service.verifyLot(input))
     },
     recordIssue: async (input) => {
-      await apply(service.recordIssue(input))
-      await queueOffline({ clientMutationId: input.clientMutationId, commandType: "issue.record", siteId: input.siteId, entityIds: [input.projectId, input.lotId, input.receiptId, input.locationId, input.movementId, input.outboundBatchId].filter((id): id is string => Boolean(id)), payload: input as unknown as Record<string, unknown> })
+      await execute({ clientMutationId: input.clientMutationId, commandType: "issue.record", siteId: input.siteId, entityIds: [input.projectId, input.lotId, input.receiptId, input.locationId, input.movementId, input.outboundBatchId].filter((id): id is string => Boolean(id)), payload: input as unknown as Record<string, unknown> }, () => service.recordIssue(input))
     },
     assignIssue: async (input) => {
       const issue = snapshot.issues.find((item) => item.id === input.issueId)
-      await apply(service.assignIssue(input))
-      if (issue) await queueOffline({ commandType: "issue.assign", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> })
+      await execute(issue ? { commandType: "issue.assign", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> } : null, () => service.assignIssue(input))
     },
     addIssueComment: async (input) => {
       const issue = snapshot.issues.find((item) => item.id === input.issueId)
-      await apply(service.addIssueComment(input))
-      if (issue) await queueOffline({ commandType: "issue.comment", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> })
+      await execute(issue ? { commandType: "issue.comment", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> } : null, () => service.addIssueComment(input))
     },
     transitionIssue: async (input) => {
       const issue = snapshot.issues.find((item) => item.id === input.issueId)
-      await apply(service.transitionIssue(input))
-      if (issue) await queueOffline({ commandType: "issue.transition", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> })
+      await execute(issue ? { commandType: "issue.transition", siteId: issue.siteId, entityIds: [issue.id], payload: input as unknown as Record<string, unknown> } : null, () => service.transitionIssue(input))
     },
     saveReceiptDraft: async (input) => {
-      const snapshot = await apply(service.saveReceiptDraft(input))
-      const receipt = input.receiptId ? snapshot.receipts.find((item) => item.id === input.receiptId) : snapshot.receipts.toSorted((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0]
+      const stable = { ...input, receiptId: input.receiptId ?? crypto.randomUUID(), lines: input.lines.map((line) => ({ ...line, id: line.id ?? crypto.randomUUID() })) }
+      const updated = await execute({ commandType: "receipt.save-draft", siteId: stable.siteId, entityIds: [stable.receiptId], payload: stable as unknown as Record<string, unknown> }, () => service.saveReceiptDraft(stable))
+      const receipt = updated.receipts.find((item) => item.id === stable.receiptId)
       if (!receipt) throw new Error("Receipt draft was saved but could not be reopened.")
-      await queueOffline({ commandType: "receipt.save-draft", siteId: input.siteId, entityIds: [receipt.id, input.projectId].filter((id): id is string => Boolean(id)), payload: { ...input, receiptId: receipt.id, lines: input.lines.map((line, index) => ({ ...line, id: receipt.lineIds[index] })) } as unknown as Record<string, unknown> })
       return { receiptId: receipt.id, lineIds: receipt.lineIds }
     },
     completeReceipt: async (receiptId, operatorName) => {
-      const receipt = snapshot.receipts.find((item) => item.id === receiptId)
-      await apply(service.completeReceipt(receiptId, operatorName))
-      if (receipt) await queueOffline({ commandType: "receipt.complete", siteId: receipt.siteId, entityIds: [receipt.id, receipt.projectId].filter((id): id is string => Boolean(id)), payload: { receiptId, operatorName } })
+      const current = queryClient.getQueryData<InventorySnapshot>(SNAPSHOT_KEY) ?? snapshot
+      const receipt = current.receipts.find((item) => item.id === receiptId)
+      await execute(receipt ? { commandType: "receipt.complete", siteId: receipt.siteId, entityIds: [receipt.id], payload: { receiptId, operatorName } } : null, () => service.completeReceipt(receiptId, operatorName))
     },
     moveMaterial: async (input) => {
       const lots = input.lines.map((line) => snapshot.lots.find((lot) => lot.id === line.lotId)).filter((lot): lot is NonNullable<typeof lot> => Boolean(lot))
-      await apply(service.moveMaterial(input))
-      if (lots[0]) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "movement.create", siteId: lots[0].siteId, entityIds: lots.map((lot) => lot.id), entityBaseVersions: Object.fromEntries(input.lines.map((line) => [line.lotId, line.expectedVersion])), payload: input as unknown as Record<string, unknown> })
+      await execute(lots[0] ? { clientMutationId: input.clientMutationId, commandType: "movement.create", siteId: lots[0].siteId, entityIds: lots.map((lot) => lot.id), entityBaseVersions: Object.fromEntries(input.lines.map((line) => [line.lotId, line.expectedVersion])), payload: input as unknown as Record<string, unknown> } : null, () => service.moveMaterial(input))
     },
     reverseMovement: async (input) => {
       const movement = snapshot.movements.find((item) => item.id === input.movementId)
-      await apply(service.reverseMovement(input))
-      if (movement) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "movement.reverse", siteId: movement.siteId, entityIds: [movement.id], payload: input as unknown as Record<string, unknown> })
+      await execute(movement ? { clientMutationId: input.clientMutationId, commandType: "movement.reverse", siteId: movement.siteId, entityIds: [movement.id], payload: input as unknown as Record<string, unknown> } : null, () => service.reverseMovement(input))
     },
     createOutboundBatch: async (input) => {
       const project = snapshot.projects.find((item) => item.id === input.projectId)
-      await apply(service.createOutboundBatch(input))
-      if (project) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.plan", siteId: project.siteId, entityIds: [project.id, ...input.lines.map((line) => line.lotId)], entityBaseVersions: Object.fromEntries(input.lines.map((line) => [line.lotId, line.expectedVersion])), payload: input as unknown as Record<string, unknown> })
+      await execute(project ? { clientMutationId: input.clientMutationId, commandType: "outbound.plan", siteId: project.siteId, entityIds: [project.id, ...input.lines.map((line) => line.lotId)], entityBaseVersions: Object.fromEntries(input.lines.map((line) => [line.lotId, line.expectedVersion])), payload: input as unknown as Record<string, unknown> } : null, () => service.createOutboundBatch(input))
     },
     markOutboundReady: async (input) => {
       const batch = snapshot.outboundBatches.find((item) => item.id === input.batchId)
-      await apply(service.markOutboundReady(input))
-      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.ready", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+      await execute(batch ? { clientMutationId: input.clientMutationId, commandType: "outbound.ready", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> } : null, () => service.markOutboundReady(input))
     },
     departOutboundBatch: async (input) => {
       const batch = snapshot.outboundBatches.find((item) => item.id === input.batchId)
-      await apply(service.departOutboundBatch(input))
-      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.depart", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+      await execute(batch ? { clientMutationId: input.clientMutationId, commandType: "outbound.depart", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> } : null, () => service.departOutboundBatch(input))
     },
     cancelOutboundBatch: async (input) => {
       const batch = snapshot.outboundBatches.find((item) => item.id === input.batchId)
-      await apply(service.cancelOutboundBatch(input))
-      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.cancel", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+      await execute(batch ? { clientMutationId: input.clientMutationId, commandType: "outbound.cancel", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> } : null, () => service.cancelOutboundBatch(input))
     },
     reverseOutboundBatch: async (input) => {
       const batch = snapshot.outboundBatches.find((item) => item.id === input.batchId)
-      await apply(service.reverseOutboundBatch(input))
-      if (batch) await queueOffline({ clientMutationId: input.clientMutationId, commandType: "outbound.reverse", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> })
+      await execute(batch ? { clientMutationId: input.clientMutationId, commandType: "outbound.reverse", siteId: batch.siteId, entityIds: [batch.id], payload: input as unknown as Record<string, unknown> } : null, () => service.reverseOutboundBatch(input))
     },
     exportBackup: service.exportBackup,
     importBackup: async (file) => { await apply(service.importBackup(file)) },
     getPhoto: service.getPhoto,
-  }), [apply, query.isFetching, queueOffline, service, snapshot])
+  }), [apply, execute, query.isFetching, queryClient, service, snapshot])
 
   if (!query.data) {
     return (

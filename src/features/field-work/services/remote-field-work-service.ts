@@ -1,6 +1,7 @@
 "use client"
 
 import { fieldWorkSnapshotSchema, type FieldWorkCommandType } from "@/features/field-work/domain/field-work"
+import { uploadEvidence } from "@/features/inventory/services/evidence-upload"
 
 type CommandResult = {
   entityId?: string
@@ -40,14 +41,7 @@ export async function stageFieldPhotos(commandId: string, siteId: string, files:
   const selected = files.filter((file) => file.size > 0)
   if (selected.length > 3) throw new Error("Select no more than 3 photos.")
   return Promise.all(selected.map(async (file) => {
-    const uploadId = crypto.randomUUID()
-    const form = new FormData()
-    form.set("commandId", commandId)
-    form.set("siteId", siteId)
-    form.set("uploadId", uploadId)
-    form.set("file", file)
-    const response = await fetch("/api/inventory/uploads", { method: "POST", body: form })
-    const uploaded = await responseJson<{ id: string; fileName: string }>(response)
+    const uploaded = await uploadEvidence({ commandId, siteId, file, fileName: file.name })
     return { id: uploaded.id, fileName: uploaded.fileName, photoType: "Material" as const, caption }
   }))
 }

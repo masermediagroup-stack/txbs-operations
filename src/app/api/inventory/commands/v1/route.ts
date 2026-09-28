@@ -1,3 +1,5 @@
+import { verifyCommandEvidence } from "@/features/inventory/server/verify-evidence"
+import { replayEntities } from "@/features/inventory/server/replay-entities"
 import { NextResponse } from "next/server"
 import { ZodError } from "zod"
 
@@ -12,11 +14,13 @@ export const dynamic = "force-dynamic"
 export async function POST(request: Request) {
   const operator = await getCurrentOperator()
   if (!operator) return NextResponse.json({ error: "Authentication is required." }, { status: 401 })
+  if (request.headers.has("x-tbs-actor") && request.headers.get("x-tbs-actor") !== operator.id) return NextResponse.json({ error: "The queued action belongs to another account." }, { status: 403 })
   if (!operator.active) return NextResponse.json({ error: "This account is not active." }, { status: 403 })
   if (operator.role !== "Operator") return NextResponse.json({ error: "Operator access is required." }, { status: 403 })
 
   try {
     const command = parseInventoryCommand(await request.json())
+    await verifyCommandEvidence(command.commandId, operator.id)
     const supabase = await createClient()
     const { data, error } = await supabase.rpc("execute_inventory_command_v1", {
       p_command_id: command.commandId,
@@ -45,14 +49,16 @@ export async function POST(request: Request) {
 
     if (command.commandType === "receipt.complete" && "receiptId" in command.payload && typeof command.payload.receiptId === "string") {
       try {
-        await dispatchReceiptNotifications(supabase, command.payload.receiptId)
+        await dispatchReceiptNotifications(command.payload.receiptId)
       } catch (notificationError) {
         // The durable outbox remains retryable; email must never undo a completed receipt.
         console.error("Receipt notification dispatch failed", notificationError)
       }
     }
 
-    return NextResponse.json(data, { headers: { "Cache-Control": "private, no-store" } })
+    const result = data as { entityId?: string }
+    const entities = result?.entityId ? await replayEntities(command.commandType, result.entityId) : {}
+    return NextResponse.json({ ...result, entities }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
