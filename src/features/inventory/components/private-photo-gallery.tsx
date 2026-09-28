@@ -56,7 +56,7 @@ function PrivatePhoto({
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="group block size-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            className="group relative block size-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             aria-label={`Open full-size ${alt.toLowerCase()}`}
           >
             <Image

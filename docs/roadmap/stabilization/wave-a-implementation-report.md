@@ -1,6 +1,6 @@
 # Stabilization implementation — Wave A
 
-Updated 2026-09-14. Substantial implementation is complete and locally validated. Hosted photo transport, deployment configuration and physical-device acceptance remain gates; this is not production acceptance.
+Updated 2026-09-28. The sections below retain the 2026-09-14 implementation checkpoint. Current hosted and device status is tracked by stable task ID in root [`TODO.md`](../../../TODO.md); physical-device acceptance and the replay-hold recovery remain open. This is not production acceptance.
 
 **Wave A is the sole active implementation priority.** Further Wave B–D work is paused until this wave's exit gate is completed and reported. Current closeout tasks are `A-01` through `A-10` in root [`TODO.md`](../../../TODO.md).
 
@@ -39,3 +39,9 @@ Updated 2026-09-14. Substantial implementation is complete and locally validated
 - Historical Richardson demo migrations assume separately imported Ramer/Plano projects. Test fixtures explicitly represent that prerequisite. Reconcile applied history without rewriting it.
 
 Wave B is paused with existing changes preserved. Its already implemented direct-photo transport may be used only as needed to complete Wave A hosted evidence acceptance. Microsoft Entra remains required before production, but the approved temporary validation exception allows administratively created Supabase password accounts while Entra is deferred.
+
+## 2026-09-28 local regression checkpoint for A-10
+
+- **Behavior and interfaces:** Pinned `next` and `eslint-config-next` to `16.3.6` after the dependency audit identified a critical Next.js advisory; `npm audit fix` updated vulnerable transitive packages without changing application data or API contracts. The Reports browser test now targets the report searchbox by its exact accessible name. The private photo gallery positions the link wrapping its fill image, as required by the bundled Next.js Image documentation. No migration was added.
+- **Validation:** Full ESLint, strict TypeScript, and 106 unit/database tests passed. The production build passed with Next.js 16.3.6 using a fresh ignored `NEXT_DIST_DIR` because a prior `.next` build artifact was read-only under OneDrive. `npm audit fix` reported zero vulnerabilities. The first browser run had 97/108 passes with seven workers; nine of the 11 failed cases passed with two workers, and the two repeatable Reports failures were resolved by the exact searchbox locator. The complete desktop/mobile Chromium and WebKit run then passed 108/108 with two workers. After the photo positioning fix, focused lint, strict TypeScript, and the damaged-Issue evidence case passed in all four browser targets (4/4), with no fill-parent warning in that run.
+- **Remaining gates and rollback:** This checkpoint has not been deployed. `A-08R` must recover and discard the accidental Chisum queue, verify zero residue, and release the hosted replay hold. `A-08` iPhone acceptance and `A-09` Android acceptance or an approved exception remain before `A-10` can close. Revert the two dependency pins and lockfile together if the upgrade must be rolled back; no database rollback is involved. The historical hosted build identity in `A-01` remains separate from this local commit.

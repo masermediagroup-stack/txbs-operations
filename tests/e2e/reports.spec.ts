@@ -24,7 +24,7 @@ test("reports provide filters, worklists, drill-through, and CSV at the current 
     await page.getByRole("tab", { name: "Age & exposure" }).click();
   }
 
-  await page.getByRole("searchbox", { name: "Search" }).fill("no-report-record-will-match");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("no-report-record-will-match");
   await expect(page.getByText("No material age records match")).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
 
