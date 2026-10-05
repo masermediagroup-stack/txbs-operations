@@ -6,6 +6,12 @@ Open Yard sync and export the recovery journal before any explicit discard. The 
 
 Do not clear browser storage to resolve a conflict. Account switching locks other accounts' scoped data. Sign in as the original account in the original environment to resume that account's journal.
 
+## Chisum field-test recovery (A-08R)
+
+Keep the Production replay hold enabled while using the original iPhone and its original app profile. Export the recovery journal and confirm the downloaded JSON, including its photo, is preserved in approved company storage before explicitly discarding the Chisum Move material action. A successful download prompt alone does not prove that the archive was saved. Confirm Yard sync has no local-only action or photo after discard and after a full close and reopen.
+
+Use the `clientMutationId` of the Chisum `movement.create` entry from the preserved journal in [`scripts/verify-chisum-recovery.sql`](../../../scripts/verify-chisum-recovery.sql). Run that read-only query with privileged access in the temporary Supabase project. The query checks the command receipt and audit, movement, staged and verified upload, photo, and Storage object associated with the command, plus all Chisum movements since the field test. It also lists the current Chisum lots for comparison with the 2026-09-24 baseline. Require one matching project, the original two lots with their baseline IDs, locations, quantities, and versions, and zero residue counts before releasing the hold. Investigate any mismatch; a zero database result alone does not prove the original phone queue was cleared or the journal was archived.
+
 ## Earlier app versions
 
 The databases `tbs-operations-inventory` and `tbs-operations-mobile` remain untouched. Yard sync reports their presence where the browser supports database enumeration. An empty current-account journal does not establish that these older databases are empty.
