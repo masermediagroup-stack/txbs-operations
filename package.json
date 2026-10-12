@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "audit:sources": "node scripts/audit-company-sources.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
@@ -47,6 +48,7 @@
     "eslint-config-next": "16.3.6",
     "fake-indexeddb": "6.2.5",
     "jsdom": "^30.0.1",
+    "pdfjs-dist": "6.4.299",
     "shadcn": "^4.21.0",
     "supabase": "2.113.0",
     "tailwindcss": "^4",
