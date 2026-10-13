@@ -18,7 +18,7 @@ Scope eligibility is reviewed per record. A current root sheet can contain histo
 
 Model supplier, manufacturer, category, contact and portal references separately. Repeated contact rows do not necessarily represent duplicate suppliers. Header layouts are resolved per sheet, including shifted columns; do not apply one positional map to every tab. Notes containing credentials belong to restricted evidence and are excluded from business imports, previews, generated documents, search and field caches.
 
-Preserve quote-level legacy orders when product lines or quantity/UOM are absent. Do not invent detailed SKU lines from totals or template content. Historical PO labels, quote references, confirmations and future sequential PO numbers are separate identifiers. A apparent revision pair requires identity/revision reconciliation; changed totals do not establish approval or sent history.
+Template defaults, blank material rows, cached zeros, suggested destinations and unselected qualification alternatives are not order, release, participant or custody facts. Review exact extracted-content clusters while retaining each file's provenance and separate visual/comment/embedded-object exceptions. Preserve quote-level legacy orders when product lines or quantity/UOM are absent. Do not invent detailed SKU lines from totals or template content. Historical PO labels, quote references, confirmations and future sequential PO numbers are separate identifiers. An apparent revision pair requires identity/revision reconciliation; changed totals do not establish approval or sent history.
 
 ## Approval and custody facts
 
@@ -28,7 +28,7 @@ Documents described as receipts may be purchase/sample-order confirmations. Clas
 
 ## Quantities, money and stock
 
-Product quantity/UOM and physical package counts are separate. Multiple product lines can share one job's handling unit; conserve each known product quantity/UOM through allocation, split and repack. Preserve missing UOM; do not default it to a unit or infer contents from weight/tracking references. Commercial freight/charges are not stock product rows and must not be counted twice when shown in both lines and totals.
+Product quantity/UOM and physical package counts are separate. Preserve compound quantity/unit strings (synthetic example: `2LS`) as raw evidence until the commercial unit is reviewed; do not convert a lump-sum quote into a product or package count. The same column may contain unit price in one legacy layout and UOM in another; resolve headers per document. Multiple product lines can share one job's handling unit; conserve each known product quantity/UOM through allocation, split and repack. Preserve missing UOM; do not default it to a unit or infer contents from weight/tracking references. Commercial freight/charges are not stock product rows and must not be counted twice when shown in both lines and totals.
 
 Keep source monetary strings and formulas as private evidence until currency, decimal interpretation and total reconciliation are approved. Cached totals, formula errors and blank summaries do not establish correct derived amounts. Validate spreadsheet epoch and displayed number/date formats; date-only scheduling values are not invented UTC activity timestamps, and prose dates without a year remain unresolved.
 
@@ -37,5 +37,7 @@ Overstock lists create unverified stock candidates. Opening stock requires curre
 ## Source review evidence and remaining work
 
 The October 13 pass covers field mappings from all five current root inputs (including fresh read-only snapshots of the two cloud workbooks) and ten representative Projects documents. A changed local root workbook was re-extracted and reviewed while retaining the prior snapshot as stale evidence. One selected drawing, one sample-order document and both sampled invoices received private visual checks. Invoice product/quantity/charge alignment and duplicate freight presentation were reconciled; absent units and an unlabeled date remain unresolved. Remaining workbook-formatting and whole-inventory content exceptions stay open. A private per-file ledger accounts for every inventoried file with honest pending/review/exception status. No import rows are approved by this pass.
+
+A further execution pass produced a private six-sheet review workbook and 74 additional files across two extraction batches. Fifty template workbooks were reviewed through six exact cell-content clusters; three further commercial documents received text mapping review. Two commercial-batch PDFs require visual/OCR review, and the remaining batch documents retain pending content/mapping status. Template cell review does not certify comments, visuals or embedded content. All review-pack rows remain unapproved.
 
 Final full-file review, mappings, physical stock verification, UOM/money/return/correction/participant/editor/recovery/offline decisions, and the existing stabilization/rollout gates remain in the Master Plan. This contract supports ticket acceptance; it does not make blocked features ready.
