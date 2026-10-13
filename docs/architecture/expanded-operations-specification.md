@@ -52,7 +52,7 @@ The first expansion begins after submittal preparation, with an explicit early-P
 - Preserve the single-package modular monolith and existing feature ownership. Commercial commands/documents need their own role boundaries; current broad active-Site Inventory read access is not an acceptable commercial-document policy.
 - Reuse the existing Inventory service/command and PostgreSQL command boundaries for atomic physical changes. Reuse field-work commands for assignments and installation. Evolve contracts with explicit version compatibility for retained offline queues and snapshots.
 - Reuse project UUIDs and preserve the full job number as text. Review alias mapping and collision resolution before import; do not invent suffixes or infer uniqueness from current nonunique indexes.
-- Expand additively before migrating callers. Existing lot/receipt/outbound quantities count packages; retain that meaning for historical and queued records. Never silently convert package counts into product quantities. Product/UOM and handling-unit contents need explicit new identities/fields and reviewed precision rules.
+- Expand additively before migrating callers. Existing lot/receipt/outbound quantities count packages; retain that meaning for historical and queued records. Never silently convert package counts into product quantities. A handling unit can contain several different product lines for one job, as confirmed on 2026-10-13; every line retains independent product identity, quantity/UOM and lineage. See ADR 0010. Product/UOM precision and conversion rules remain explicit decisions.
 - General/shared stock needs an explicit allocation model because current Material Lots require a project. Never represent unallocated stock as an invented customer job. Outbound handling units belong to one job.
 - Supplier POs may span jobs. Reconcile quantity/cost allocations to each issued line/revision. Start new numbers in the `TBS-PO-000001` namespace at the first unused number; allocate atomically and keep the base across revisions. Preserve legacy PO labels and supplier references separately.
 - Separate request/PO approval, PO issuance, submittal evidence, and material release. One authorized Operator can self-approve with distinct events. Held early POs do not authorize material release. Release uses exact approval revision and line/package scope with online validation.
@@ -78,7 +78,7 @@ Test at the highest existing command/service interface that exposes the behavior
 
 ## Open design choices
 
-These choices do not reopen accepted business decisions: product UOM precision/conversion; handling-unit content cardinality and repack/return conservation; allocation corrections; crew/recipient authority; direct-delivery custody details; document format/size/preview/editor choices; company retention/restore targets; offline scan resolver and conflict presentation. Resolve affected choices before implementing their slice, with an ADR only where a consequential tradeoff warrants one.
+These choices do not reopen accepted business decisions: product UOM precision/conversion; handling-unit repack/return conservation; allocation corrections; crew/recipient authority; direct-delivery custody details; document format/size/preview/editor choices; company retention/restore targets; offline scan resolver and conflict presentation. Multi-product handling-unit content cardinality was settled on 2026-10-13. Resolve affected choices before implementing their slice, with an ADR only where a consequential tradeoff warrants one.
 
 ## Boundaries and rollout
 

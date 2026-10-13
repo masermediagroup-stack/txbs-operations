@@ -132,6 +132,44 @@ The UTC date and time fourteen days after a Material Lot's latest Verification. 
 
 The elapsed time since a Material Lot was first recorded on site. It is not called Receipt age unless a durable Receipt-to-Lot relationship exists.
 
+## Expanded operations terms
+
+### Product Quantity
+
+The amount of a named product expressed in its unit of measure. Product Quantity is distinct from the count of boxes, pallets, or bundles; an unknown amount remains unknown.
+
+### Handling Unit
+
+A separately identifiable physical box, pallet, or bundle containing one or more product lines. A Handling Unit prepared for Outbound belongs to one job; several different products for that job may share it.
+
+### Handling Unit Content Line
+
+One product and its quantity/unit of measure inside a Handling Unit. Each line retains its own material identity and source lineage independently of the package count.
+
+### Purchase Order
+
+A supplier-facing order with product lines and explicit job allocations. Issuing a Purchase Order is separate from approval evidence and authorization to release material.
+
+### Purchase Order Revision
+
+The preserved version of a Purchase Order that was issued. Later changes create a new issued revision while the original remains identifiable.
+
+### Material Release
+
+An explicit authorization for eligible product lines or packages to proceed against recorded approval evidence. A Purchase Order issued to obtain submittals may remain held for Material Release.
+
+### Recipient Handoff
+
+The recorded acceptance of material at its destination by the actual named recipient. Recipient Handoff is separate from departure, purchasing reconciliation, and installation.
+
+### Installation Confirmation
+
+The actual TBS crew's record of installed product quantities and outcome against eligible arrived material. The crew lead and members are distinct from the account recording the confirmation.
+
+### Supplier Invoice Match
+
+A reviewed relationship between supplier invoice lines, issued Purchase Order revisions/allocations, and actual receipts. It supports discrepancy review and accounting export while payment and ledger execution remain in accounting.
+
 ## Module ownership
 
 Inventory owns Inventory Projects, Material Groups and Lots, Storage, Receiving, Movement, Outbound, Activity, Photos, Verifications, and Issues. The Operations-level Projects area remains reserved for future cross-operational project records.
