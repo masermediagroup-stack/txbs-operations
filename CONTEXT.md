@@ -146,6 +146,10 @@ A separately identifiable physical box, pallet, or bundle containing one or more
 
 One product and its quantity/unit of measure inside a Handling Unit. Each line retains its own material identity and source lineage independently of the package count.
 
+### Handling Unit Label
+
+A physical identifier applied to a Handling Unit, with a readable identity and a barcode representing that unit. Reading the label identifies material for a worker's review; it does not establish quantity, physical custody or completion of an action.
+
 ### Purchase Order
 
 A supplier-facing order with product lines and explicit job allocations. Issuing a Purchase Order is separate from approval evidence and authorization to release material.

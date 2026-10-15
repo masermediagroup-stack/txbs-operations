@@ -1,12 +1,12 @@
 # Expanded operations specification
 
-Draft supporting `WF-03`, dated 2026-10-12. Accepted business requirements are captured here for review; source mapping and some implementation choices remain open. This document does not replace the master `TODO.md`, close `SRC-01`/`WF-02`/`WF-03`, authorize release past their gates, or claim any new production capability is implemented. Read the [architecture assessment](expanded-workflow-assessment-2026-10-12.md) for current-code evidence.
+Draft supporting `WF-03`, dated 2026-10-12; barcode direction updated 2026-10-15. Accepted business requirements are captured here for review; source mapping and some implementation choices remain open. This document does not replace the master `TODO.md`, close `SRC-01`/`WF-02`/`WF-03`, authorize release past their gates, or claim any new production capability is implemented. Read the [architecture assessment](expanded-workflow-assessment-2026-10-12.md) for current-code evidence.
 
 ## Problem and intended behavior
 
 TBS needs a job-centered operational system linking approved submittals, purchasing, product quantities and packaging, receiving, physical custody, installation, invoice reconciliation, and supporting documents. Office and field users need to see the same authorized cloud facts and record their part of the process inside the app. The source server remains a read-only reference archive; app-owned records and copied/generated document versions become the working system.
 
-The first expansion begins after submittal preparation, with an explicit early-PO exception for suppliers requiring a PO to produce submittals. Manual workflows must work before QR hardware is chosen. Existing Inventory, Receiving, Movement, Outbound, My Work, Issues, and offline command behavior are reused and extended.
+The first expansion begins after submittal preparation, with an explicit early-PO exception for suppliers requiring a PO to produce submittals. Manual workflows must work before barcode hardware is chosen. Existing Inventory, Receiving, Movement, Outbound, My Work, Issues, and offline command behavior are reused and extended.
 
 ## User stories
 
@@ -43,7 +43,7 @@ The first expansion begins after submittal preparation, with an explicit early-P
 31. As an Operator, I can track reminders for held releases, missing acknowledgments, late deliveries, and pending handoffs with failure visibility.
 32. As an authorized user, I can see confirmed cloud changes from another device, with actor and audit history.
 33. As a field user, I can complete supported manual tasks without a printer or dedicated scanner.
-34. As an assigned iPhone user, I can later scan a handling-unit QR to open an authenticated record and confirm a permitted action.
+34. As an authorized field user, I can later scan a handling-unit barcode through an accepted scanner/host input path, open the permitted record and confirm an eligible action.
 35. As an offline field user, I can use prepared permitted records, retain pending work/photos, and see exactly-once cloud acceptance after reconnect.
 36. As an Operator, I can reconcile duplicate imports, retries, stale commands, reversals, and document revisions without silently losing or replacing evidence.
 
@@ -60,7 +60,7 @@ The first expansion begins after submittal preparation, with an explicit early-P
 - Extend private storage through a dedicated document contract; the current image-only evidence contract remains intact. Link immutable document versions to business records, source provenance, approvals, issued outputs, and invoices. Preview/download support is explicit per format; full Word/Excel editing remains undecided.
 - Cloud ingestion begins with controlled copies selected by an Operator. The hosted app cannot directly open the laptop's mapped drive. No source writeback or bidirectional synchronization is part of this workflow.
 - Cloud reminders use durable leases/retries/idempotency and current record revisions. They do not approve/release POs, change stock, execute payments, or edit source files. Accounting export preserves accounting-system payment/ledger ownership.
-- QR uses opaque handling-unit references and authenticated web routes. A scan opens context; explicit permitted commands change state. Manual lookup uses the same actions. Offline operation requires a prepared resolver and assigned cached records, not unrestricted cached authenticated pages.
+- Barcode labeling replaces the earlier QR-first output direction per the October 15 user request. A compact opaque handling-unit token resolves inside the authenticated app; Code 128 is the proposed pilot symbology, not an accepted format yet. HID scanners send decoded text; ZBar is an optional image-decoding candidate rather than the hardware/cloud connector or label generator. A scan opens context and an explicit worker-confirmed permitted command changes state; a scanner Enter suffix performs lookup only. Manual entry uses the same resolver/actions. Offline operation requires prepared account/environment-scoped mappings and permitted records, not unrestricted cached authenticated pages or automatic scanner-memory replay. See [the barcode labeling contract](barcode-labeling-contract.md) for connectivity, printing, identity, physical acceptance and unresolved operating choices.
 
 ## Behavioral test interfaces
 
@@ -74,17 +74,17 @@ Test at the highest existing command/service interface that exposes the behavior
 | Field-work commands | Arrival limits installation, actual crew distinct from recorder, assigned-only access, partial/blocked/damaged outcomes, exactly-once offline replay, wrong-account/expired-session denial. |
 | Private document upload/download | Type/size/content verification, stable upload identity, lost-response retry, immutable versions, short-lived authorized access, assignment/cost isolation, metadata plus byte restoration. |
 | Durable worker | Duplicate/stale/cancelled reminder work, restart and expired lease, retry/backoff, failed-job visibility and authorized redrive, no duplicate delivery or business approval. |
-| Browser and physical iPhone journeys | One demonstrable journey per slice; keyboard/mobile/error states; manual paths before QR; scan → authorized action → API/database confirmation → second-device visibility; offline pending/confirmed state. |
+| Browser and physical iPhone journeys | One demonstrable journey per slice; keyboard/mobile/error states; manual paths before barcode hardware; scan → authorized action → API/database confirmation → second-device visibility; offline pending/confirmed state. |
 
 ## Open design choices
 
-These choices do not reopen accepted business decisions: product UOM precision/conversion; handling-unit repack/return conservation; allocation corrections; crew/recipient authority; direct-delivery custody details; document format/size/preview/editor choices; company retention/restore targets; offline scan resolver and conflict presentation. Multi-product handling-unit content cardinality was settled on 2026-10-13. Resolve affected choices before implementing their slice, with an ADR only where a consequential tradeoff warrants one.
+These choices do not reopen accepted business decisions: product UOM precision/conversion; handling-unit repack/return conservation; allocation corrections; crew/recipient authority; direct-delivery custody details; document format/size/preview/editor choices; company retention/restore targets; offline scan resolver and conflict presentation. Multi-product handling-unit content cardinality was settled on 2026-10-13. The October 15 handling-unit barcode/worker-confirmation direction is accepted; scanner hosts, exposure, payload profile, exact hardware, printing workflow and optional camera path remain Q-03 decisions. Resolve affected choices before implementing their slice, with an ADR only where a consequential tradeoff warrants one.
 
 ## Boundaries and rollout
 
-The existing A-08R replay hold/recovery and physical acceptance remain open; A-10 controls the next application wave. Later expansion remains behind D-02/D-04 and its source/specification prerequisites. Real company uploads, live reminders, and cutover retain PROD-01 through PROD-05. Manual handling-unit workflows precede Q-01 hardware acceptance and Q-02 cloud scan actions.
+The existing A-08R replay hold/recovery and physical acceptance remain open; A-10 controls the next application wave. Later expansion remains behind D-02/D-04 and its source/specification prerequisites. Real company uploads, live reminders, and cutover retain PROD-01 through PROD-05. Manual handling-unit workflows precede production barcode use. Q-03 research/synthetic compatibility work can proceed now; Q-04 owns application label generation/lifecycle behind implementation gates. Q-01 independently qualifies physical hardware/media using synthetic samples; online Q-02 requires Q-01 and Q-04, and offline Q-02 follows its online slice.
 
-Out of scope for this release: source-folder edits, automatic payment/ledger execution, automatic supplier email integration, a full replacement for estimating/submittal preparation, unauthenticated QR contents, invented historical stock movements, and implicit conversion of old quantities. Generic Office document editing is a design decision rather than a promised capability. Public GitHub tickets use technical requirements and synthetic examples; restricted company evidence stays outside the repository/tracker.
+Out of scope for this release: source-folder edits, automatic payment/ledger execution, automatic supplier email integration, a full replacement for estimating/submittal preparation, unauthenticated barcode contents, invented historical stock movements, and implicit conversion of old quantities. Generic Office document editing is a design decision rather than a promised capability. Public GitHub tickets use technical requirements and synthetic examples; restricted company evidence stays outside the repository/tracker.
 
 ## Published Master Plan behavior slices
 
@@ -113,8 +113,10 @@ Published on 2026-10-12 under the user's instruction to execute the updated plan
 | P-17 | Confirm crew installation against arrived quantities | [#24](https://github.com/masermediagroup-stack/txbs-operations/issues/24) |
 | P-20 | Match invoices, approve discrepancies and export to accounting | [#25](https://github.com/masermediagroup-stack/txbs-operations/issues/25) |
 | CLOUD-02 | Deliver durable reminders with recoverable failures | [#26](https://github.com/masermediagroup-stack/txbs-operations/issues/26) |
-| Q-01 | Accept physical handling-unit labels and iPhone scanning | [#27](https://github.com/masermediagroup-stack/txbs-operations/issues/27) |
-| Q-02 | Open authorized handling units and confirm cloud actions from QR | [#28](https://github.com/masermediagroup-stack/txbs-operations/issues/28) |
-| Q-02 | Resolve prepared offline scans and replay confirmed actions once | [#29](https://github.com/masermediagroup-stack/txbs-operations/issues/29) |
+| Q-01 | Accept physical barcode labels, scanner connections and print quality | [#27](https://github.com/masermediagroup-stack/txbs-operations/issues/27) |
+| Q-02 | Resolve barcode scans and confirm authorized cloud actions | [#28](https://github.com/masermediagroup-stack/txbs-operations/issues/28) |
+| Q-02 | Resolve prepared offline barcodes and replay confirmed work once | [#29](https://github.com/masermediagroup-stack/txbs-operations/issues/29) |
+| Q-03 | Prove barcode format and device compatibility | [#32](https://github.com/masermediagroup-stack/txbs-operations/issues/32) |
+| Q-04 | Generate barcodes with an auditable print lifecycle | [#33](https://github.com/masermediagroup-stack/txbs-operations/issues/33) |
 | P-14 | Preview and reconcile reviewed opening-data imports | [#30](https://github.com/masermediagroup-stack/txbs-operations/issues/30) |
 | P-14 | Report and pilot the complete request-to-installation workflow | [#31](https://github.com/masermediagroup-stack/txbs-operations/issues/31) |
