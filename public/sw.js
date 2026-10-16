@@ -1,4 +1,4 @@
-const VERSION = "tbs-yard-v4"
+const VERSION = "tbs-yard-v5"
 const SHELL_CACHE = `${VERSION}-shell`
 const ASSET_CACHE = `${VERSION}-assets`
 const OFFLINE_URL = "/offline"

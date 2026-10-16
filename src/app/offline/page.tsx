@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 
 export const metadata: Metadata = { title: "Offline" }
 
+// The public fallback needs request-matched CSP nonces for its reconnect control.
+// The service worker can still cache this public response for offline navigation.
+export const dynamic = "force-dynamic"
+
 export default function OfflinePage() {
   return (
     <main id="main-content" tabIndex={-1} className="flex min-h-svh items-center justify-center bg-muted/35 p-4">

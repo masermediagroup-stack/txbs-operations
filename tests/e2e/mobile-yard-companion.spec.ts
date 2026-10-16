@@ -144,16 +144,37 @@ test("an offline movement is retained and visibly queued on the device", async (
   await expect(page.getByRole("dialog").getByText("No local-only actions")).toBeVisible()
 })
 
-test("offline fallback explains how to continue safely", async ({ page }) => {
-  await page.goto("/offline")
+test("offline fallback explains how to continue safely", async ({ page, context }) => {
+  const response = await page.goto("/offline")
+  const policyNonce = response?.headers()["content-security-policy"]?.match(/'nonce-([^']+)'/)?.[1]
+  expect(policyNonce).toBeTruthy()
+  expect(await response!.text()).toContain(`nonce="${policyNonce}"`)
   await expect(page.getByRole("heading", { name: "You are offline" })).toBeVisible()
-  await expect(page.getByRole("button", { name: "Try Inventory again" })).toBeVisible()
+  const retry = page.getByRole("link", { name: "Try Inventory again" })
+  await expect(retry).toHaveAttribute("href", "/inventory")
+  await context.setOffline(true)
+  await expect(retry).toHaveCount(0)
+  await expect(page.getByRole("status")).toContainText("Work already saved on this device is retained")
+  await context.setOffline(false)
+  await expect(retry).toBeVisible()
+  await retry.click()
+  await expect(page).toHaveURL(/\/inventory$/)
 })
 
 test("an offline navigation tap keeps the open Inventory workflow available", async ({ page, context }) => {
   await page.goto("/inventory/movements")
   await expect(page.getByRole("heading", { name: "Movements", level: 1 })).toBeVisible()
+  // Finish the supported online preparation before disconnecting; SSR text alone
+  // does not prove that the workspace scripts and recovery controls have loaded.
+  await page.getByTestId("sync-status-trigger").click()
+  const sheet = page.getByRole("dialog")
+  await expect(sheet.getByRole("heading", { name: "Yard sync" })).toBeVisible()
+  await sheet.getByRole("button", { name: "Prepare this device" }).click()
+  await expect(sheet.getByText(/Prepared/)).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(sheet).toHaveCount(0)
   await context.setOffline(true)
+  await expect(page.getByTestId("sync-status-trigger")).toHaveAttribute("aria-label", /Offline/)
   if ((page.viewportSize()?.width ?? 0) < 768) await page.getByRole("button", { name: "Toggle Sidebar" }).click()
 
   await page.getByRole("link", { name: "Overview", exact: true }).click()

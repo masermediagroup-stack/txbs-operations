@@ -12,9 +12,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.19.0
+          node-version: 24.22.0
           cache: npm
       - run: npm ci
+      - run: npm audit --omit=dev
       - run: npm run check
 
   browser:
@@ -23,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.19.0
+          node-version: 24.22.0
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
@@ -32,5 +33,28 @@ jobs:
         if: failure()
         with:
           name: browser-failures
+          path: test-results/
+          retention-days: 7
+
+  production-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      # Prerendering/CSP failures can be hidden by the development server.
+      - run: npx playwright test tests/e2e/mobile-yard-companion.spec.ts tests/e2e/content-security-policy.spec.ts --project=desktop-chromium --project=mobile-chromium --workers=2
+        env:
+          PLAYWRIGHT_USE_PRODUCTION_SERVER: "1"
+          PLAYWRIGHT_PORT: "3100"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: production-recovery-failures
           path: test-results/
           retention-days: 7

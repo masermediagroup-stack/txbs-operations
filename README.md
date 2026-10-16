@@ -45,7 +45,9 @@ Legacy Manager and Administrator values remain only as database compatibility de
 
 ## Local development
 
-Requirements: Node.js 24.19.0 LTS, npm 11+, and Git.
+Requirements: Node.js 24.22.0 LTS or a newer supported 24.x patch, npm 11+, and Git.
+The build checks both Node and its bundled Undici version; updating npm packages
+alone does not patch Node's built-in fetch implementation.
 
 ```bash
 npm install
@@ -79,3 +81,5 @@ docs/adr/                 Architecture decisions
 The repository is the source of truth. New work must preserve the existing shell, TBS tokens, route terminology, compact desktop tables, mobile cards/sheets, audit history, Site awareness, and private evidence rules.
 
 See the [development game plan](TODO.md), [system handbook](docs/TBS-OPERATIONS-SYSTEM-HANDBOOK.md), [domain context](CONTEXT.md), and [implementation evidence index](docs/roadmap/README.md).
+
+A [public-safe system case study](docs/portfolio/system-case-study.md) explains the architecture, development process and evidence boundaries for portfolio review.
