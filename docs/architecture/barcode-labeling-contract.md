@@ -1,6 +1,6 @@
 # Barcode labeling and scan-to-action contract
 
-Supporting Q-01 through Q-04 in the **TBS Operations Master Plan**, updated 2026-10-15. The user requested barcode labeling in place of the planned QR output and confirmed handling-unit identification followed by explicit worker-confirmed actions. This is a specification and research checkpoint, not implemented scanner support or hardware acceptance.
+Supporting Q-01 through Q-04 in the **TBS Operations Master Plan**, updated 2026-10-16. The user requested barcode labeling in place of the planned QR output and confirmed handling-unit identification followed by explicit worker-confirmed actions. This is a specification and research checkpoint, not implemented scanner support or hardware acceptance.
 
 Read the cited [hardware/connectivity research](../research/barcode-scanner-connectivity-2026-10-15.md) and [software/symbology research](../research/barcode-software-and-symbology-2026-10-15.md). Facts about vendor products are evidence; the TBS design below is a proposal except where explicitly accepted. No scanner, printer, decoder or label stock has been purchased or selected.
 
@@ -79,3 +79,7 @@ After delivery, test the one pilot handheld on that screen using the manufacture
 Q-03 is research/decision work that can proceed with synthetic fixtures while stabilization remains open. Q-04 application implementation remains behind D-02/D-04, manual handling-unit identity and accepted Q-03 choices; non-production sample generation supports the physical gate without declaring production printing ready. Q-01 depends on the accepted Q-03 contract and P-19 identity/lineage; it may use independently generated samples and is not blocked on full Q-04 application delivery. Online Q-02 production use requires Q-01 physical acceptance and Q-04 lifecycle integration as well as its existing rollout/document/field prerequisites. Offline Q-02 follows online acceptance. These dependencies avoid making the hardware pilot wait for the feature it is meant to validate.
 
 No company source files, cloud originals, application records, credentials, deployments or hardware settings are changed by this specification. Existing stabilization, recovery, production and source-review gates remain in force.
+
+## Initial device acceptance scope — October 16
+
+The user withdrew further iPhone work in favor of the primary Android barcode handheld. Physical iPhone acceptance is deferred from initial launch, not marked passed. Phones remain optional; this does not promise iOS camera or installed-app support. Qualify the named Android host/input profile and retain manual lookup. The old validation environment replay hold remains a separate legacy safety item until recovery or verified retirement/isolation is complete. Synthetic bench testing does not require the old phone export.

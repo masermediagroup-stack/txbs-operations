@@ -8,6 +8,41 @@ Do not clear browser storage to resolve a conflict. Account switching locks othe
 
 ## Chisum field-test recovery (A-08R)
 
+October 16 scope decision: the user withdrew further iPhone testing in favor of
+the primary Android barcode handheld. A-08 physical iPhone acceptance is deferred,
+not passed. The user reported saving an export and discarding the action, but later
+said the export was probably still on the phone. Archive/photo and full-relaunch
+evidence remain unverified. Do not request further phone recovery as a prerequisite
+for synthetic scanner bench work. The existing environment's replay hold remains.
+
+### Retired-device isolation alternative — prepared, not executed
+
+If the phone is retired from the pilot, use a reviewed isolation route rather than
+claiming that its queue was proven empty. Keep the old validation deployment/backend
+held and preserve any known archive in place. Record the missing recovery evidence;
+do not clear phone storage, delete the old dataset or mark its photo recovered.
+
+A fresh Android pilot would need a distinct application origin and backend/Auth
+project, freshly generated project credentials and test identities, and synthetic
+records. Configure shared mode with the new backend explicitly; the old demo
+fallback must not select the held project. Do not import old browser storage,
+journals, identifiers, production stock or source documents. Barcode hardware by
+itself does not provide this separation.
+
+Before accepting isolation, prove the actual deployed API/backend configuration,
+account/environment journal scope, rejection of the wrong project's credentials
+and old command ownership, absence of queue adoption, and continued hold in the
+old environment. Repeat applicable hosted authorization/evidence checks for the
+new environment; previous-project results do not prove new-project access controls.
+Then qualify the actual Android device and exactly-once replay using disposable
+fixtures. Keep operational use behind the warehouse and production gates.
+
+This is a reviewable procedure, not a provisioned environment or permission to
+create paid resources. Confirm account capacity, cost, ownership and environment
+configuration before provisioning. A-08R remains open until one route is verified.
+
+### Original recovery route — retained reference
+
 Keep the Production replay hold enabled while using the original iPhone and its original app profile. Export the recovery journal and confirm the downloaded JSON, including its photo, is preserved in approved company storage before explicitly discarding the Chisum Move material action. A successful download prompt alone does not prove that the archive was saved. Confirm Yard sync has no local-only action or photo after discard and after a full close and reopen.
 
 Use the `clientMutationId` of the Chisum `movement.create` entry from the preserved journal in [`scripts/verify-chisum-recovery.sql`](../../../scripts/verify-chisum-recovery.sql). Run that read-only query with privileged access in the temporary Supabase project. The query checks the command receipt and audit, movement, staged and verified upload, photo, and Storage object associated with the command, plus all Chisum movements since the field test. It also lists the current Chisum lots for comparison with the 2026-09-24 baseline. Require one matching project, the original two lots with their baseline IDs, locations, quantities, and versions, and zero residue counts before releasing the hold. Investigate any mismatch; a zero database result alone does not prove the original phone queue was cleared or the journal was archived.

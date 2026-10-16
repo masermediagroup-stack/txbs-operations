@@ -1,5 +1,9 @@
 # Architecture Overview
 
+Current implementation description, reconciled with source on 2026-10-16. The
+[Master Plan](../../TODO.md) owns status and release gates; implemented code does
+not establish physical-device or production acceptance.
+
 ## System shape
 
 TBS Operations is a single Next.js application organized as a modular monolith. This keeps deployment and cross-module navigation simple while preserving feature ownership as the product grows.
@@ -9,9 +13,10 @@ The App Router owns URL structure and shared layouts. Feature folders own page c
 ## Rendering model
 
 - Pages and layouts remain React Server Components by default.
-- Client boundaries are limited to interactive shell components such as sidebar state, path-aware navigation, and dropdown menus.
-- No global data provider is introduced until a concrete client-side data requirement exists.
+- Client boundaries contain interactive forms, tables, navigation and recovery controls.
+- Inventory owns a scoped TanStack Query provider. The mobile sync provider coordinates prepared records, the local journal, connection state and recovery; there is no generic application-wide business-data store.
 - Operational state should be addressable through URLs where practical.
+- Account-specific operational pages render dynamically. The public offline fallback also renders dynamically so its reconnect control receives the nonce required by CSP; the service worker caches that public response for offline use.
 
 ## Route hierarchy
 
@@ -37,21 +42,46 @@ shadcn/ui component source provides accessible primitives. Tailwind semantic tok
 
 Components consume semantic classes such as `bg-primary`, `text-muted-foreground`, and `border-border` rather than embedding brand hex values.
 
-## Future data access
+## Current data access and commands
 
-Do not add a generic `Repository<T>` abstraction. Inventory uses a narrow persistence port driven by real lot, verification, issue, backup, receiving, movement, readiness, and outbound use cases. IndexedDB and in-memory adapters implement that port; Supabase will replace the production adapter in Phase 6 without changing workflow components.
+Inventory has a local service backed by IndexedDB and a remote service that calls
+authenticated Next.js endpoints. The provider selects the shared online service
+or prepared local state according to backend and connectivity. Shared snapshots
+are validated before entering the client cache. In-memory adapters support tests.
+Keep these use-case interfaces narrow; do not add a generic `Repository<T>`.
 
 ```text
-Inventory use case
-        │
-        ▼
-Feature-owned repository port
-        │
-        ├── In-memory/test adapter
-        └── Supabase adapter
+Inventory interface
+  ├── online remote service → authenticated Route Handler → Postgres command
+  └── prepared IndexedDB state → scoped command/photo journal → reviewed replay
 ```
 
-This keeps React components independent of storage details without guessing at interfaces before the domain behavior exists.
+Shared commands validate actor, role, payload and Site context, then call versioned
+database functions. Database grants, RLS and explicit command authorization remain
+separate controls. Command identities support idempotent retries; expected record
+versions expose conflicts instead of silently overwriting another worker's work.
+Evidence uses private Storage, staged upload identities and server verification
+of byte count, media signature, MIME type and SHA-256 before command consumption.
+
+The service worker caches public shell/static assets, not authenticated HTML.
+Prepared records and pending commands/photos live in account/environment-scoped
+IndexedDB stores. Replay checks the original account, current session, dependencies
+and unresolved conflicts. The temporary replay hold remains a separate release
+gate; these mechanisms do not establish physical iPhone/Android acceptance.
+
+Implementation references: `src/features/inventory/components/inventory-provider.tsx`,
+`src/features/inventory/services/remote-inventory-service.ts`,
+`src/app/api/inventory/commands/v1/route.ts`,
+`src/features/inventory/server/verify-evidence.ts`,
+`src/features/mobile/domain/replay-guard.ts`, and `public/sw.js`.
+
+## Expansion boundary
+
+The expanded specification adds commercial documents, procurement, product UOM,
+handling-unit lineage and barcode workflows. Those are ticketed behind the Master
+Plan's stabilization and rollout dependencies. The synthetic barcode bench is an
+isolated compatibility experiment; the production application does not yet provide
+integrated scanner resolution or a label-print lifecycle.
 
 ## Quality gates
 

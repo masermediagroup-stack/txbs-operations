@@ -74,7 +74,7 @@ Test at the highest existing command/service interface that exposes the behavior
 | Field-work commands | Arrival limits installation, actual crew distinct from recorder, assigned-only access, partial/blocked/damaged outcomes, exactly-once offline replay, wrong-account/expired-session denial. |
 | Private document upload/download | Type/size/content verification, stable upload identity, lost-response retry, immutable versions, short-lived authorized access, assignment/cost isolation, metadata plus byte restoration. |
 | Durable worker | Duplicate/stale/cancelled reminder work, restart and expired lease, retry/backoff, failed-job visibility and authorized redrive, no duplicate delivery or business approval. |
-| Browser and physical iPhone journeys | One demonstrable journey per slice; keyboard/mobile/error states; manual paths before barcode hardware; scan → authorized action → API/database confirmation → second-device visibility; offline pending/confirmed state. |
+| Browser and primary Android handheld journeys | One demonstrable journey per slice; keyboard/mobile/error states; manual paths before barcode hardware; scan → authorized action → API/database confirmation → second-device visibility; offline pending/confirmed state. |
 
 ## Open design choices
 
@@ -82,7 +82,7 @@ These choices do not reopen accepted business decisions: product UOM precision/c
 
 ## Boundaries and rollout
 
-The existing A-08R replay hold/recovery and physical acceptance remain open; A-10 controls the next application wave. Later expansion remains behind D-02/D-04 and its source/specification prerequisites. Real company uploads, live reminders, and cutover retain PROD-01 through PROD-05. Manual handling-unit workflows precede production barcode use. Q-03 research/synthetic compatibility work can proceed now; Q-04 owns application label generation/lifecycle behind implementation gates. Q-01 independently qualifies physical hardware/media using synthetic samples; online Q-02 requires Q-01 and Q-04, and offline Q-02 follows its online slice.
+The initial launch is Android-handheld-first. On October 16 the user explicitly withdrew further iPhone testing, so A-08 is deferred rather than passed and is not an initial-launch prerequisite. The existing A-08R legacy replay hold and primary Android physical acceptance remain open; switching label type does not isolate old commands. Keep the old validation environment held until recovery or a reviewed retirement/isolation route is verified. Q-03 synthetic bench testing can continue without the phone archive. A-10 controls the next application wave. Later expansion remains behind D-02/D-04 and its source/specification prerequisites. Real company uploads, live reminders, and cutover retain PROD-01 through PROD-05. Manual handling-unit workflows precede production barcode use. Q-03 research/synthetic compatibility work can proceed now; Q-04 owns application label generation/lifecycle behind implementation gates. Q-01 independently qualifies physical hardware/media using synthetic samples; online Q-02 requires Q-01 and Q-04, and offline Q-02 follows its online slice.
 
 ### Warehouse launch and pre-move scanner qualification
 
