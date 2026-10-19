@@ -1,6 +1,6 @@
 # Building a materials operations application
 
-Public-safe case-study draft, 2026-10-16. This is supporting project evidence,
+Public-safe case-study draft, updated 2026-10-19. This is supporting project evidence,
 not a replacement for the Master Plan or a claim of production launch. Review
 wording, personal attribution and any screenshots before using it on a portfolio.
 
@@ -25,7 +25,7 @@ uncertainties visible rather than silently inventing a successful result.
 | Private evidence | Staged photo uploads and server-side byte/signature/checksum verification | General document editing remains later scope |
 | Intermittent connectivity | Prepared records, a scoped IndexedDB journal, photo retention, conflicts and recovery export | Legacy replay remains held; the initial physical-device target is the Android handheld |
 | Source preparation | Read-only inventory, bounded inert extraction, provenance and review queues | Extraction is not reviewed import approval or physical stock verification |
-| Barcode exploration | Research, a labeling contract, synthetic Code 128 fixtures and a non-mutating test screen | Actual scanner, read range, printing and app integration remain unaccepted |
+| Barcode exploration | Research, an internal-label pilot contract, a non-mutating test screen and 26 exact synthetic image decodes plus two blank controls | Actual scanner, read range, printing and app integration remain unaccepted |
 
 ## How the system fits together
 
@@ -80,7 +80,9 @@ handling-unit record. Receiving, moving or checking out material still requires
 an authorized confirmation. An Android handheld runs the application over Wi-Fi;
 its supported scanner output supplies the identifier. A beep proves a local read,
 not cloud acceptance. The current bench tests that interaction with synthetic
-records and no stock-changing connection.
+records and no stock-changing connection. An independent decoder also checks
+that generated label images preserve the exact identifier. Those digital results
+do not establish physical scanner range or printed-label quality.
 
 ## How we build and track the work
 
