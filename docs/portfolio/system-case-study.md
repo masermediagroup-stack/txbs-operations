@@ -116,6 +116,13 @@ matched the application schema and passed 32 authorization checks, with generate
 fixtures rolled back and empty-state verification afterward. Full app isolation,
 real sign-in, evidence uploads and the physical handheld still need acceptance.
 
+A release attempt also exposed a separate constraint: the hosting provider's
+managed runtime differed from the local reference. Checking the actual versions
+led to newer bundled-fetch advisories, so the release check was tightened and the
+security ticket reopened. The database tests remain useful evidence, while the
+hosted app stays pending. Portfolio material should show that distinction rather
+than present a failed deployment as a completed launch.
+
 AI assistance supports source inspection, research, implementation and validation.
 The human product owner supplies operational intent and consequential business
 decisions. Portfolio authorship should describe the owner's actual contribution;

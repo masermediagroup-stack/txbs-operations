@@ -61,6 +61,11 @@ The registry's full advisory output is retained in private execution artifacts.
 
 ## Node runtime boundary
 
+**Superseded security floor:** the [October 19 reassessment](dependency-security-review-2026-10-19.md)
+found newer published advisories affecting bundled Undici 7.29.1. A-11 is reopened
+and the release guard is stricter. This section preserves the earlier artifact
+and validation history; it is not current runtime clearance.
+
 The initial local/CI pin, Node 24.19.0, bundled Undici 7.29.0. Refreshing the npm
 graph did not update that implementation of global fetch. The official Windows
 Node 24.22.0 archive was downloaded from nodejs.org and checked against its

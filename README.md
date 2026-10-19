@@ -49,6 +49,12 @@ Requirements: Node.js 24.22.0 LTS or a newer supported 24.x patch, npm 11+, and 
 The build checks both Node and its bundled Undici version; updating npm packages
 alone does not patch Node's built-in fetch implementation.
 
+**October 19 release hold:** the bundled-fetch security floor is now Undici
+7.30.1+ on 7.x or 8.12.2+ on 8.x. The previously qualified Node 24.22.0 archive
+bundles 7.29.1 and fails the updated build/check guard. Local fixture results do
+not establish release readiness. A qualifying released/runtime baseline is still
+pending; see the [current reassessment](docs/dependency-security-review-2026-10-19.md).
+
 ```bash
 npm install
 npm run dev

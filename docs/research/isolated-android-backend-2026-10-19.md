@@ -46,7 +46,7 @@ Four bounded HTTPS checks also passed: the new backend accepts its own public ke
 
 ## Application and remaining acceptance
 
-A separate Vercel app project was created on the existing team with explicit shared-mode configuration for the new backend, CSP enforcement and an initial replay hold. Email provider credentials were not configured. The source repository's old local Vercel binding remains untouched; a separate private deployment binding identifies the new project. At this checkpoint no app build has been deployed.
+A separate Vercel app project was created on the existing team with explicit shared-mode configuration for the new backend, CSP enforcement and an initial replay hold. Email provider credentials were not configured. The source repository's old local Vercel binding remains untouched; a separate private deployment binding identifies the new project. A reviewed 167-file deployment attempt and a minimal runtime probe both failed; no new app deployment is ready. The [October 19 runtime reassessment](../dependency-security-review-2026-10-19.md) records the measured provider versions, newer bundled-fetch advisories and restored normal install/build commands. The earlier functional/backend evidence does not clear that release gate.
 
 The connector cannot list environment variables: both project environment-list requests returned `403`, and no authenticated CLI was available. The user said they will add the new backend's server secret to the new Vercel project's Production environment directly. Its presence/value has not been verified; no secret is requested in chat or copied from the old environment.
 
