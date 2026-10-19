@@ -41,6 +41,15 @@ This is a reviewable procedure, not a provisioned environment or permission to
 create paid resources. Confirm account capacity, cost, ownership and environment
 configuration before provisioning. A-08R remains open until one route is verified.
 
+October 19 preparation: the [local bootstrap proof](../../research/isolated-bootstrap-local-proof-2026-10-19.md)
+records two empty-schema restores, catalog/security comparisons, rolled-back
+synthetic role probes and a target-default-permission negative control. Do not
+replay historical business-data migrations into the proposed new backend. The
+candidate was tested on local PostgreSQL 18; hosted-major compatibility and
+managed Auth/Storage/default privileges remain unverified. Organization selection
+and actual project cost must be resolved before provisioning. No new environment
+or isolation pass is established by this local evidence.
+
 ### Original recovery route — retained reference
 
 Keep the Production replay hold enabled while using the original iPhone and its original app profile. Export the recovery journal and confirm the downloaded JSON, including its photo, is preserved in approved company storage before explicitly discarding the Chisum Move material action. A successful download prompt alone does not prove that the archive was saved. Confirm Yard sync has no local-only action or photo after discard and after a full close and reopen.

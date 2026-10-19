@@ -105,6 +105,15 @@ behavioral seam exists. Hosted validation, physical-device acceptance and final
 production readiness are recorded separately. This keeps a green local test from
 being misrepresented as a warehouse-ready product.
 
+The Android test environment follows the same evidence rule. Historical setup
+scripts contain old data, so a local tool compiles their final structure and
+exports definitions separately from business records. Two empty local restores
+matched the application definitions and permissions, with no copied stock,
+accounts or photos. Temporary synthetic accounts then exercised access checks
+and were rolled back. A deliberate permission mismatch demonstrated why the real
+cloud target needs its own checks. This is local preparation; the new hosted
+environment and physical handheld are still awaiting acceptance.
+
 AI assistance supports source inspection, research, implementation and validation.
 The human product owner supplies operational intent and consequential business
 decisions. Portfolio authorship should describe the owner's actual contribution;
