@@ -86,6 +86,13 @@ do not establish physical scanner range or printed-label quality.
 
 ## How we build and track the work
 
+Source review also shapes the design. A bounded commercial batch showed why a
+folder name cannot determine document type, why copied job headers need identity
+review, and why a familiar spreadsheet total may include summary rows twice.
+The process keeps original evidence, records unresolved conflicts and produces a
+review pack before import. Portfolio examples should demonstrate these rules with
+synthetic documents; real commercial or payment details stay private.
+
 One Master Plan controls priority and acceptance. GitHub issues contain detailed
 behavior slices and explicit dependencies. Source findings inform the domain
 glossary and specification; consequential tradeoffs receive architecture decision
