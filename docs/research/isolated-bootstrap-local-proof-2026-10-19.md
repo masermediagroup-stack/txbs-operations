@@ -2,6 +2,8 @@
 
 This is supporting evidence for A-08R, not a second plan. On October 19, a schema-only candidate compiled from the current 22 migrations restored into two independently empty local PostgreSQL instances. Both matched the compiled application catalog and passed the same 14 security probes. No hosted project was created or modified. A-08R remains open.
 
+This report preserves the initial PostgreSQL 18 local checkpoint. Subsequent PostgreSQL 17 compatibility, fresh project provisioning and hosted verification are recorded in the [Android backend report](isolated-android-backend-2026-10-19.md). Statements below about work still required describe the initial checkpoint, not the newer report's completed backend checks.
+
 ## Why a separate bootstrap is needed
 
 Historical migrations contain business inserts and demo-data replacements. Replaying those files directly into the proposed Android test backend would carry old records and prerequisites into what should be a fresh environment. The existing database-test helper is used only to compile a disposable local reference. Its simplified Auth/Storage objects are not exported as hosted platform definitions.

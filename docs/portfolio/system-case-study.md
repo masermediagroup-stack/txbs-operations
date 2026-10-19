@@ -111,8 +111,10 @@ exports definitions separately from business records. Two empty local restores
 matched the application definitions and permissions, with no copied stock,
 accounts or photos. Temporary synthetic accounts then exercised access checks
 and were rolled back. A deliberate permission mismatch demonstrated why the real
-cloud target needs its own checks. This is local preparation; the new hosted
-environment and physical handheld are still awaiting acceptance.
+cloud target needs its own checks. A fresh hosted test backend subsequently
+matched the application schema and passed 32 authorization checks, with generated
+fixtures rolled back and empty-state verification afterward. Full app isolation,
+real sign-in, evidence uploads and the physical handheld still need acceptance.
 
 AI assistance supports source inspection, research, implementation and validation.
 The human product owner supplies operational intent and consequential business

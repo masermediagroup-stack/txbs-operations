@@ -15,9 +15,9 @@ if (args[0] !== '--worker') {
   if (child.error) console.error(child.error.message);
   process.exit(child.status ?? 1);
 }
-const [toolsDirectory, outputDirectory] = args.slice(1);
-assert(toolsDirectory && outputDirectory && args.length === 3,
-  'Usage: node scripts/prepare-isolated-validation.mjs <isolated-tools-workspace> <new-output-directory>');
+const [toolsDirectory, outputDirectory, pg17Directory] = args.slice(1);
+assert(toolsDirectory && outputDirectory && (args.length === 3 || args.length === 4),
+  'Usage: node scripts/prepare-isolated-validation.mjs <isolated-tools-workspace> <new-output-directory> [qualified-pg17-workspace]');
 const repository = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(repository);
 const output = path.resolve(outputDirectory);
@@ -48,6 +48,17 @@ assert.equal(toolsLock.packages['node_modules/@electric-sql/pglite-tools'].integ
 const { pgDump } = await import(pathToFileURL(toolsRequire.resolve('@electric-sql/pglite-tools/pg_dump')));
 const { PGlite } = require('@electric-sql/pglite');
 const { createTestDatabase } = await import('../tests/helpers/database.ts');
+let targetEngine;
+let pg17Lock;
+if (pg17Directory) {
+  const pg17Require = createRequire(path.join(path.resolve(pg17Directory),'package.json'));
+  assert.equal(packageMetadata(pg17Require,'@electric-sql/pglite').version,'0.4.6');
+  pg17Lock = fs.readFileSync(path.join(pg17Directory,'package-lock.json'));
+  assert.equal(JSON.parse(pg17Lock).packages['node_modules/@electric-sql/pglite'].integrity,
+    'sha512-qmlmfN8UyKCee35qkV0r/MBp+Znl8FjBz7OpoglNvww3GJpw0/DLP0o1ZymvLNmcD5DTLOQdzKPtF8Hd3mdl1w==');
+  targetEngine = {PGlite:pg17Require('@electric-sql/pglite').PGlite,
+    pgcrypto:pg17Require('@electric-sql/pglite/contrib/pgcrypto').pgcrypto};
+}
 const hash = value => createHash('sha256').update(value).digest('hex');
 const quoteIdentifier = value => '"' + value.replaceAll('"', '""') + '"';
 const quoteLiteral = value => "'" + value.replaceAll("'", "''") + "'";
@@ -168,11 +179,20 @@ async function securityProbes(db) {
 
 fs.mkdirSync(output);
 let reference;
+let compatibilityReference;
 const targets = [];
 try {
   reference = await createTestDatabase();
   const version = (await reference.query('select version() as version')).rows[0].version;
   const expectedCatalog = await catalog(reference);
+  let expectedRestoreCatalog = expectedCatalog;
+  let restoreVersion = version;
+  if (targetEngine) {
+    compatibilityReference = await createTestDatabase(targetEngine);
+    restoreVersion = (await compatibilityReference.query('select version() as version')).rows[0].version;
+    assert.equal((await compatibilityReference.query('show server_version_num')).rows[0].server_version_num,'170005');
+    expectedRestoreCatalog = await catalog(compatibilityReference);
+  }
   // Tools 0.4.8 restores SHOW search_path as SQL; an empty setting is invalid
   // in that wrapper. Use the ordinary explicit schema before invoking it.
   await reference.exec('set search_path = public');
@@ -209,16 +229,18 @@ try {
   const candidate = schema + '\n' + overlay + '\nRESET ALL;\n';
   fs.writeFileSync(path.join(output,'candidate-application-schema.sql'),candidate,{flag:'wx'});
   fs.writeFileSync(path.join(output,'reference-catalog.json'),JSON.stringify(expectedCatalog,null,2),{flag:'wx'});
+  fs.writeFileSync(path.join(output,'catalog-queries.json'),JSON.stringify(queries,null,2),{flag:'wx'});
+  if (targetEngine) fs.writeFileSync(path.join(output,'pg17-reference-catalog.json'),JSON.stringify(expectedRestoreCatalog,null,2),{flag:'wx'});
   const proofs = [];
   for (let index=1;index<=2;index++) {
-    const db = new PGlite();
+    const db = new (targetEngine?.PGlite ?? PGlite)();
     targets.push(db);
     await db.exec(platformScaffold);
     await db.exec(candidate);
     assert.equal((await db.query('show row_security')).rows[0].row_security,'on');
     const actual = await catalog(db);
     fs.writeFileSync(path.join(output,`restored-catalog-${index}.json`),JSON.stringify(actual,null,2),{flag:'wx'});
-    for (const name of Object.keys(queries)) assert.deepEqual(actual[name],expectedCatalog[name],`Catalog mismatch: ${name}, restore ${index}`);
+    for (const name of Object.keys(queries)) assert.deepEqual(actual[name],expectedRestoreCatalog[name],`Catalog mismatch: ${name}, restore ${index}`);
     const rows = await rowCounts(db);
     assert.deepEqual((await db.query('select id,name,public,file_size_limit,allowed_mime_types from storage.buckets order by id')).rows,[expectedBucket]);
     const securityChecks = await securityProbes(db);
@@ -227,28 +249,65 @@ try {
   }
   // Demonstrate why target default ACL review is mandatory: a dump's explicit
   // source grants do not revoke privileges inherited from a different target.
-  const poisoned = new PGlite();
+  const poisoned = new (targetEngine?.PGlite ?? PGlite)();
   targets.push(poisoned);
   await poisoned.exec(platformScaffold);
   await poisoned.exec('alter default privileges in schema public grant all on tables to anon');
   await poisoned.exec(candidate);
   const poisonedCatalog = await catalog(poisoned);
-  assert.notDeepEqual(poisonedCatalog.relations,expectedCatalog.relations);
+  assert.notDeepEqual(poisonedCatalog.relations,expectedRestoreCatalog.relations);
   assert.equal((await poisoned.query("select has_table_privilege('anon','public.profiles','SELECT') as allowed")).rows[0].allowed,true);
+  let platformGuardProof = null;
+  if (targetEngine) {
+    const guard=fs.readFileSync('supabase/bootstrap/isolated-validation-platform-guard.sql','utf8');
+    // Required preflight rejection: never apply a fresh baseline over app data.
+    let rejected=false;
+    try { await poisoned.exec(guard); } catch(error) { rejected=error.code==='P0001'; }
+    assert(rejected,'Platform guard failed to reject an existing application schema');
+    const platform = new targetEngine.PGlite();
+    targets.push(platform);
+    await platform.exec(platformScaffold);
+    await platform.exec(`create table auth.identities(id uuid); create table auth.sessions(id uuid);
+      alter default privileges for role postgres in schema public grant all on tables to anon,authenticated,service_role;
+      alter default privileges for role postgres in schema public grant all on functions to anon,authenticated,service_role;
+      alter default privileges for role postgres in schema public grant all on sequences to anon,authenticated,service_role;`);
+    await platform.exec(guard+'\n'+candidate);
+    const platformCatalog=await catalog(platform);
+    for(const name of Object.keys(queries).filter(n=>n!=='defaultPrivileges'))
+      assert.deepEqual(platformCatalog[name],expectedRestoreCatalog[name],'Normalized platform catalog mismatch: '+name);
+    const unexpectedDefaults=await platform.query(`select count(*)::integer as count from pg_default_acl d
+      cross join lateral aclexplode(d.defaclacl) a where d.defaclnamespace='public'::regnamespace
+      and a.grantee in ('anon'::regrole,'authenticated'::regrole,'service_role'::regrole)`);
+    assert.equal(unexpectedDefaults.rows[0].count,0);
+    const securityChecks=await securityProbes(platform);
+    await rowCounts(platform);
+    const roleScript=fs.readFileSync('supabase/bootstrap/verify-isolated-validation-roles.sql','utf8');
+    const roleResults=await platform.exec(roleScript);
+    const roleProof=roleResults.find(r=>r.rows?.[0]?.role_proof)?.rows[0].role_proof;
+    assert.equal(roleProof?.passed,32,'Rollback role script did not return all expected checks');
+    await rowCounts(platform);
+    fs.writeFileSync(path.join(output,'normalized-platform-catalog.json'),JSON.stringify(platformCatalog,null,2),{flag:'wx'});
+    platformGuardProof={sha256:hash(guard),existingApplicationRejected:true,
+      unexpectedPublicDefaultGrants:0,securityChecks,zeroRowTables:37,
+      roleScriptSha256:hash(roleScript),roleScriptChecks:roleProof.passed};
+  }
   const migrations = fs.readdirSync('supabase/migrations').filter(x=>x.endsWith('.sql')).sort().map(name=>({name,sha256:hash(fs.readFileSync('supabase/migrations/'+name))}));
   const git = spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:5000,windowsHide:true});
   assert.equal(git.status,0,'Cannot record source commit');
   const results = {
     status:'LOCAL_CANDIDATE_ONLY',node:process.version,postgres:version,
+    restorePostgres:restoreVersion,pg17ToolsLockSha256:pg17Lock?hash(pg17Lock):null,
     sourceCommit:git.stdout.trim(),scriptSha256:hash(fs.readFileSync(fileURLToPath(import.meta.url))),
     helperSha256:hash(fs.readFileSync('tests/helpers/database.ts')),
     toolsLockSha256:hash(fs.readFileSync(path.join(toolsDirectory,'package-lock.json'))),
     tools:'@electric-sql/pglite-tools@0.4.8',pglite:'0.5.8',
     rawDumpSha256:hash(raw),candidateSha256:hash(candidate),candidateBytes:Buffer.byteLength(candidate),
     schemaCounts:Object.fromEntries(Object.entries(expectedCatalog).map(([key,rows])=>[key,rows.length])),
+    restoreSchemaCounts:Object.fromEntries(Object.entries(expectedRestoreCatalog).map(([key,rows])=>[key,rows.length])),
     overlay:{authTriggers:1,storagePolicies:policies.length,buckets:1,storageObjects:0},migrations,proofs,
     negativeControl:{unexpectedTargetDefaultAclDetected:true,hostedApplyStillRequiresAclReview:true},
-    limitations:['Local PostgreSQL 18 does not establish compatibility with hosted PostgreSQL 17.',
+    platformGuardProof,
+    limitations:[targetEngine?'Local PostgreSQL 17.5 is not the exact hosted PostgreSQL 17.11 service.':'Local PostgreSQL 18 does not establish compatibility with hosted PostgreSQL 17.',
       'Auth/Storage schemas are simplified local stubs; no hosted service or session was tested.',
       'Hosted schema ownership, default ACLs, extension schemas and platform policies require separate review.',
       'No remote apply mode; fresh identities, fixtures, deployment and replay acceptance remain outstanding.'],
@@ -265,5 +324,6 @@ try {
   process.exitCode=1;
 } finally {
   for (const db of targets) await db.close();
+  await compatibilityReference?.close();
   await reference?.close();
 }

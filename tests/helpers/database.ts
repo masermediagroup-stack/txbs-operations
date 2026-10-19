@@ -3,8 +3,8 @@ import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto"
 import { readFileSync, readdirSync } from "node:fs"
 
 /** Actual PostgreSQL engine; platform-owned auth/storage catalog is minimal test scaffolding. */
-export async function createTestDatabase() {
-  const db = new PGlite({ extensions: { pgcrypto } })
+export async function createTestDatabase(engine = { PGlite, pgcrypto }) {
+  const db = new engine.PGlite({ extensions: { pgcrypto: engine.pgcrypto } })
   await db.exec(`
     create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create schema storage;
