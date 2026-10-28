@@ -58,12 +58,40 @@ four remain for review. The comparison also showed
 why area-priced quantities and descriptive piece counts need separate assertions.
 
 The new ledger retains all **37,393 unique inventoried paths** and updates the
-24 batch entries plus two supporting entries without dropping prior evidence. It still records 37,238 general
-content-review items, 50 template files with visual/embedded work pending, ten
+24 batch entries plus two supporting entries without dropping prior evidence. A
+later same-day package pass updated the 50 template entries as described below.
+It still records 37,238 general
+content-review items, 50 template files with rendered-layout/import work pending, ten
 representative mappings, five root inputs, and explicit unsupported/size/temporary
 exceptions, plus the two supporting identity reviews. These are dispositions at
 different scopes, not 37,393 accepted files. Twenty-six source snapshots were
-read and checked in this checkpoint.
+read and checked in the initial checkpoint; the template follow-up adds 50 distinct
+source snapshots for 76 checked snapshots in total.
+
+## Template package follow-up
+
+All 50 template workbook originals matched their saved SHA-256 values and remained
+stable during the read-only inspection. Six cell-content groups correspond to
+**seven byte-distinct workbook packages**. Inspecting all package members rather
+than deduplicating by cell content alone preserved a variant with different
+workbook, worksheet and style parts. Its rendered meaning remains unaccepted.
+
+The ZIP/XML inspection found no comment/threaded-note parts, embedded objects,
+macro parts, data connections, or hidden sheets/rows/columns in these 50 snapshots.
+The seven byte-distinct representatives contain image or header-image drawings;
+all three distinct image assets were visually inspected and show logos. Ten files
+contain 40 email hyperlinks; none was followed. All 522 internal package
+relationships resolve to an existing member. No Office application, macro, formula
+or external link was executed. XML readers prohibited DTDs and external resolution.
+These observations classify this batch; they are not a general workbook-security
+clearance or evidence about unreviewed files.
+
+The private ledger and seven-sheet review pack now distinguish completed package
+inspection from **pending rendered layout, print and style-dependent meaning**,
+including unselected template qualification alternatives. Prior review artifacts
+were preserved before refreshing generated copies. All 37,393 ledger paths and
+76 document dispositions remain, the previously confirmed candidate mapping is
+retained, and zero rows are approved for import.
 
 Visual tables/signatures, workbook comments/objects, canonical job/order/revision
 reconciliation, source freshness, row-level approval and actual physical stock

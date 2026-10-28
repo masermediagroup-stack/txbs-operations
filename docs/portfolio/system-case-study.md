@@ -93,6 +93,13 @@ The process keeps original evidence, records unresolved conflicts and produces a
 review pack before import. Portfolio examples should demonstrate these rules with
 synthetic documents; real commercial or payment details stay private.
 
+The review checks more than visible cell values. Fifty template workbooks shared
+six cell-content patterns but seven distinct full-file patterns. Inspecting their
+package parts and image assets narrowed the remaining review without treating
+matching cells as proof of matching layout. The review pack records what was
+checked, preserves the earlier evidence and leaves rendered/print interpretation
+open. No template defaults become stock, orders or approvals automatically.
+
 One Master Plan controls priority and acceptance. GitHub issues contain detailed
 behavior slices and explicit dependencies. Source findings inform the domain
 glossary and specification; consequential tradeoffs receive architecture decision

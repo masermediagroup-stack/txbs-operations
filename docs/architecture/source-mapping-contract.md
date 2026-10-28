@@ -81,4 +81,14 @@ approval remains separate. The pack now holds 76 document
 dispositions, including those two supporting files. See the
 [public-safe checkpoint](../research/source-review-checkpoint-2026-10-19.md).
 
+A later October 19 package pass revalidated all 50 template source hashes and
+inspected their seven byte-distinct packages, rather than assuming the six equal
+cell-content groups also shared layout and styles. No comment, embedded-object,
+macro, connection or hidden sheet/row/column content was found in that batch.
+Its three distinct image assets are reviewed logos; email hyperlinks remain inert
+and were not followed. Those package exceptions are narrowed to rendered layout,
+print/style-dependent meaning and final disposition/import review. This does not
+close visual or embedded-content exceptions for other documents or approve any
+template as an operational record.
+
 Final full-file review, mappings, physical stock verification, UOM/money/return/correction/participant/editor/recovery/offline decisions, and the existing stabilization/rollout gates remain in the Master Plan. This contract supports ticket acceptance; it does not make blocked features ready.
